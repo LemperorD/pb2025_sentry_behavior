@@ -48,8 +48,8 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   node()->get_parameter("use_cout_logger", use_cout_logger_);
 
   subscribe<pb_rm_interfaces::msg::EventData>("referee/event_data", "referee_eventData");
-  subscribe<pb_rm_interfaces::msg::GameRobotHP>("referee/all_robot_hp", "referee_allRobotHP");
-  subscribe<pb_rm_interfaces::msg::GameStatus>("referee/game_status", "referee_gameStatus");
+  subscribe<pb_rm_interfaces::msg::GameRobotHP>("/referee/all_robot_hp", "referee_allRobotHP");
+  subscribe<pb_rm_interfaces::msg::GameStatus>("/referee/game_status", "referee_gameStatus");
   subscribe<pb_rm_interfaces::msg::GroundRobotPosition>(
     "referee/ground_robot_position", "referee_groundRobotPosition");
   subscribe<pb_rm_interfaces::msg::RfidStatus>("referee/rfid_status", "referee_rfidStatus");
