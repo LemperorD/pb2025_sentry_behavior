@@ -1,56 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" main_tree_to_execute="Main">
   <!-- ===== Main：统一调度 dev_rm + rmul_2025 ===== -->
-  <BehaviorTree ID="Main">
-    <KeepRunningUntilFailure>
-      <ForceSuccess>
-        <ReactiveSequence>
-          <!-- 开赛门控 -->
-          <SubTree ID="check_game_start"/>
+<BehaviorTree ID="Main">
+  <KeepRunningUntilFailure>
+    <ForceSuccess>
+      <!-- ForceSuccess 只能有 1 个子节点，因此把主体包在一个 Sequence 里 -->
+      <Sequence>
 
-          <!-- 旋转待机（可被上层抢占） -->
-          <PublishSpinSpeed spin_speed="7.0" duration="200" topic_name="cmd_spin"/>
+        <!-- 1) 开局检测 + 自转 -->
+        <SubTree ID="check_game_start"/>
+        <PublishSpinSpeed spin_speed="7.0" duration="200" topic_name="cmd_spin"/>
 
-          <!-- 优先级：补给 > 战斗(简化版) > 默认点位 -->
+        <!-- 2) 顶层优先式：先看是否需要补给；不需要则进入作战（攻击/默认点位） -->
+        <ReactiveFallback>
+
+          <!-- 2.1 需要补给？(IsStatusOK 取反) 需要则执行补给，不再进入作战分支 -->
+          <Sequence>
+            <Inverter>
+              <IsStatusOK ammo_min="0" heat_max="350" hp_min="480" key_port="{@referee_robotStatus}"/>
+            </Inverter>
+            <!-- 这里放你的补给子树/动作；示例用 rmul_supply，你自己的 ID/参数照填 -->
+            <SubTree ID="rmul_supply"/>
+          </Sequence>
+
+          <!-- 2.2 作战：能打就打；打不到就去默认点位 -->
           <ReactiveFallback>
 
-            <!-- 1) 状态不 OK -> 补给 -->
+            <!-- 2.2.1 攻击链 -->
             <Sequence>
-              <SubTree ID="check_robot_status"/>
-              <PubNav2Goal goal="4.65;-3.5;0" topic_name="goal_pose"/>
-            </Sequence>
-            
-          <Timeout msec="200">
-            <Sequence>
+              
               <IsDetectEnemy armor_id="1;2;3;4;5;7" max_distance="8.0" key_port="{@detector_armors}"/>
-              <CalculateAttackPose costmap_port="{@nav_globalCostmap}"
-                                   tracker_port="{@tracker_target}"
-                                   goal="{attack_pose}"
-                                   topic_name="debug_attack_pose"/>
+              <CalculateAttackPose
+                  costmap_port="{nav_globalCostmap}"
+                  tracker_port="{tracker_target}"
+                  goal="{attack_pose}"
+                  topic_name="debug_attack_pose"/>
               <PubNav2Goal goal="{attack_pose}" topic_name="goal_pose"/>
             </Sequence>
-          </Timeout>
 
-            <Sequence>
-              <Inverter>
-                <IsStatusOK ammo_min="0" heat_max="350" hp_min="200" key_port="{@referee_robotStatus}"/>
-              </Inverter>
-              <SubTree ID="rmul_supply"/>
-            </Sequence>
-
-            <!-- 2) 战斗（最初简化版：检测→计算→发布目标点） -->
-           
-
-            <!-- 3) 默认点位 -->
-            
+            <!-- 2.2.2 默认点位（RateController 是装饰器，只能带 1 个子节点，所以再包一层 Sequence） -->
+            <RateController hz="5.0">
+              <Sequence>
+                <SubTree ID="check_robot_status"/>
+                <PubNav2Goal goal="4.65;-3.5;0" topic_name="goal_pose"/>
+              </Sequence>
+            </RateController>
 
           </ReactiveFallback>
-        </ReactiveSequence>
-      </ForceSuccess>
-    </KeepRunningUntilFailure>
-  </BehaviorTree>
+        </ReactiveFallback>
+
+      </Sequence>
+    </ForceSuccess>
+  </KeepRunningUntilFailure>
+</BehaviorTree>
+
+
 
   <!-- ===== rmul_2025：开赛判定 / 状态检查 ===== -->
+  <BehaviorTree ID="supply_monitor">
+  <!-- 条件为真（不OK）时执行补给；否则执行Else分支。整体始终SUCCESS。 -->
+    <WhileDoElse>
+    <!-- 不OK？（注意 Inverter 反转：IsStatusOK 失败 => 条件为真） -->
+      <Inverter>
+        <IsStatusOK ammo_min="0" heat_max="350" hp_min="200"
+                  key_port="{@referee_robotStatus}"/>
+      </Inverter>
+
+    <!-- Do: 去补给（你原来的 rmul_supply 子树会自己发布补给路径/等待补给） -->
+      <SubTree ID="rmul_supply"/>
+
+    <!-- Else: 什么也不做，但保持SUCCESS -->
+      <AlwaysSuccess/>
+    </WhileDoElse>
+  </BehaviorTree>
+
   <BehaviorTree ID="check_game_start">
     <Fallback>
       
@@ -90,11 +113,14 @@
         <IsStatusOK ammo_min="0" heat_max="100" hp_min="399" key_port="{@referee_robotStatus}"/>
       </RetryUntilSuccessful>
       <Sequence>
-        <!--
+        <PubNav2Goal goal="0;0;0"
+                        topic_name="navigate_to_pose"/>
+      
+      </Sequence><!--
         <PubNav2Goal topic_name="/goal_pose" goal="{goal}" />
         !-->
-        <AlwaysSuccess/>
-      </Sequence>
+        
+      
     </WhileDoElse>
   </BehaviorTree>
 
