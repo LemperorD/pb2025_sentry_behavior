@@ -90,17 +90,9 @@
   </BehaviorTree>
 
   <BehaviorTree ID="check_robot_status">
-    <Fallback>
+   
       <IsStatusOK ammo_min="0" heat_max="350" hp_min="300" key_port="{@referee_robotStatus}"/>
-      <ForceFailure>
-        <Fallback>
-          <IsRfidDetected friendly_supply_zone_exchange="false" friendly_supply_zone_non_exchange="true"
-                          center_gain_point="false" friendly_fortress_gain_point="false"
-                          key_port="{@referee_rfidStatus}"/>
-          <PubNav2Goal goal="0;0;0" topic_name="goal_pose"/>
-        </Fallback>
-      </ForceFailure>
-    </Fallback>
+     
   </BehaviorTree>
 
   <!-- ===== dev_rm：补给逻辑 ===== -->
@@ -114,7 +106,7 @@
       </RetryUntilSuccessful>
       <Sequence>
         <PubNav2Goal goal="0;0;0"
-                        topic_name="navigate_to_pose"/>
+                        topic_name="goal_pose"/>
       
       </Sequence>
         
