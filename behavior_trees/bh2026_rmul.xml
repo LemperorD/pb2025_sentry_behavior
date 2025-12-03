@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4"
+      main_tree_to_execute="bh2026_ul">
+  <BehaviorTree ID="bh2026_ul">
+    <KeepRunningUntilFailure>
+      <IsGameStatus max_remain_time="420"
+                    min_remain_time="0"
+                    expected_game_progress="4"
+                    key_port="{@referee_gameStatus}"/>
+    </KeepRunningUntilFailure>
+  </BehaviorTree>
+
+  <!-- Description of Node Models (used by Groot) -->
+  <TreeNodesModel>
+    <Condition ID="IsGameStatus">
+      <input_port name="max_remain_time"
+                  default="420"
+                  type="int">Maximum remaining time (s)</input_port>
+      <input_port name="min_remain_time"
+                  default="0"
+                  type="int">Minimum remaining time (s)</input_port>
+      <input_port name="expected_game_progress"
+                  default="4"
+                  type="int">Expected game progress stage</input_port>
+      <input_port name="key_port"
+                  default="{@referee_gameStatus}"
+                  type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;">GameStatus port on blackboard</input_port>
+    </Condition>
+  </TreeNodesModel>
+
+</root>
