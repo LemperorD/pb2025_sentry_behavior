@@ -51,6 +51,15 @@ list(APPEND plugin_libs is_attacked)
 ament_auto_add_library(is_detect_enemy SHARED plugins/condition/is_detect_enemy.cpp)
 list(APPEND plugin_libs is_detect_enemy)
 
+ament_auto_add_library(is_path_blocked SHARED plugins/condition/is_path_blocked.cpp)
+list(APPEND plugin_libs is_path_blocked)
+
+ament_auto_add_library(is_path_clear SHARED plugins/condition/is_path_clear.cpp)
+list(APPEND plugin_libs is_path_clear)
+
+ament_auto_add_library(is_combat_cooldown_ready SHARED plugins/condition/is_combat_cooldown_ready.cpp)
+list(APPEND plugin_libs is_combat_cooldown_ready)
+
 ####### Actions #######
 ament_auto_add_library(send_nav2_goal SHARED plugins/action/send_nav2_goal.cpp)
 list(APPEND plugin_libs send_nav2_goal)
@@ -72,6 +81,12 @@ list(APPEND plugin_libs pub_gimbal_velocity)
 
 ament_auto_add_library(calculate_attack_pose SHARED plugins/action/calculate_attack_pose.cpp)
 list(APPEND plugin_libs calculate_attack_pose)
+
+ament_auto_add_library(handle_path_blocked SHARED plugins/action/handle_path_blocked.cpp)
+list(APPEND plugin_libs handle_path_blocked)
+
+ament_auto_add_library(handle_path_clear SHARED plugins/action/handle_path_clear.cpp)
+list(APPEND plugin_libs handle_path_clear)
 
 ####### Controls #######
 ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)
