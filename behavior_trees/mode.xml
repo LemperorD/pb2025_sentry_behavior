@@ -1,99 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4">
   <!-- ////////// -->
-  <BehaviorTree ID="MainTree">
-    <Sequence name="root_sequence">
-      <RunOnce name="init_blackboard"
-               then_skip="true">
-        <Action ID="SetChassisMode"
-                mode="1"
-                topic_name="/chassis_mode"
-                current_mode_in="{@last_mode}"
-                current_mode="{last_mode}"
-                combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-      </RunOnce>
-      <Decorator ID="TickAfterTimeout"
-                 timeout="0.5">
-        <ReactiveFallback name="brain_decision_system">
-          <Sequence name="survival_mode">
-            <Fallback name="check_survival_condition">
-              <Inverter>
-                <Condition ID="IsStatusOK"
-                           ammo_min="0"
-                           heat_max="350"
-                           hp_min="120"
-                           key_port="{@referee_robotStatus}"/>
-              </Inverter>
-              <Sequence name="maintain_survival">
-                <ScriptCondition code="last_mode == 3"/>
-                <Inverter>
-                  <Condition ID="IsStatusOK"
-                             ammo_min="0"
-                             heat_max="350"
-                             hp_min="300"
-                             key_port="{@referee_robotStatus}"/>
-                </Inverter>
-              </Sequence>
-            </Fallback>
-            <Fallback>
-              <ScriptCondition code="current_node == 3"/>
-              <Action ID="SetChassisMode"
-                      mode="3"
-                      topic_name="/chassis_mode"
-                      current_mode_in="{@last_mode}"
-                      current_mode="{last_mode}"
-                      combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-            </Fallback>
-            <ReactiveFallback name="survival_sub_behaviors">
-              <Sequence name="path_blocked_logic">
-                <Condition ID="IsPathBlocked"
-                           key_port="{@nav_path_status}"/>
-                <Action ID="HandlePathBlocked"
-                        key_port="{@nav_path_status}"/>
-              </Sequence>
-              <Sequence name="path_clear_logic">
-                <Condition ID="IsPathClear"
-                           key_port="{@nav_path_status}"/>
-                <Action ID="HandlePathClear"
-                        key_port="{@nav_path_status}"/>
-              </Sequence>
-              <AlwaysSuccess/>
-            </ReactiveFallback>
+  <BehaviorTree ID="ModeSelect">
+    <ReactiveFallback name="brain_decision_system">
+      <Sequence name="survival_mode">
+        <Fallback name="check_survival_condition">
+          <Inverter>
+            <Condition ID="IsStatusOK"
+                       ammo_min="0"
+                       heat_max="350"
+                       hp_min="120"
+                       key_port="{@referee_robotStatus}"/>
+          </Inverter>
+          <Sequence name="maintain_survival">
+            <ScriptCondition code="last_mode == 3"/>
+            <Inverter>
+              <Condition ID="IsStatusOK"
+                         ammo_min="0"
+                         heat_max="350"
+                         hp_min="300"
+                         key_port="{@referee_robotStatus}"/>
+            </Inverter>
           </Sequence>
-          <Sequence name="combat_mode">
-            <Condition ID="IsDetectEnemy"
-                       armor_id="1;2;3;4;5;7"
-                       max_distance="8.0"
-                       key_port="{@detector_armors}"/>
-            <Fallback>
-              <ScriptCondition code="current_node == 2"/>
-              <Action ID="SetChassisMode"
-                      mode="2"
-                      topic_name="/chassis_mode"
-                      current_mode_in="{@last_mode}"
-                      current_mode="{last_mode}"
-                      combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-            </Fallback>
+        </Fallback>
+        <Fallback>
+          <ScriptCondition code="current_node == 3"/>
+          <Action ID="SetChassisMode"
+                  mode="3"
+                  topic_name="/chassis_mode"
+                  current_mode_in="{@last_mode}"
+                  current_mode="{last_mode}"
+                  combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+        </Fallback>
+        <ReactiveFallback name="survival_sub_behaviors">
+          <Sequence name="path_blocked_logic">
+            <Condition ID="IsPathBlocked"
+                       key_port="{@nav_path_status}"/>
+            <Action ID="HandlePathBlocked"
+                    key_port="{@nav_path_status}"/>
           </Sequence>
-          <Fallback>
-            <ScriptCondition code="current_node == 1"/>
-            <Sequence name="default_mode_entry">
-              <Fallback name="combat_cooldown_gate">
-                <ScriptCondition code="last_mode != 2"/>
-                <Condition ID="IsCombatCooldownReady"
-                           ready_time="{@combat_cooldown_ready_time}"/>
-              </Fallback>
-              <Action ID="SetChassisMode"
-                      mode="1"
-                      topic_name="/chassis_mode"
-                      current_mode_in="{@last_mode}"
-                      current_mode="{last_mode}"
-                      combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-            </Sequence>
-          </Fallback>
+          <Sequence name="path_clear_logic">
+            <Condition ID="IsPathClear"
+                       key_port="{@nav_path_status}"/>
+            <Action ID="HandlePathClear"
+                    key_port="{@nav_path_status}"/>
+          </Sequence>
+          <AlwaysSuccess/>
         </ReactiveFallback>
-      </Decorator>
-    </Sequence>
+      </Sequence>
+      <Sequence name="combat_mode">
+        <Condition ID="IsDetectEnemy"
+                   armor_id="1;2;3;4;5;7"
+                   max_distance="8.0"
+                   key_port="{@detector_armors}"/>
+        <Fallback>
+          <ScriptCondition code="current_node == 2"/>
+          <Action ID="SetChassisMode"
+                  mode="2"
+                  topic_name="/chassis_mode"
+                  current_mode_in="{@last_mode}"
+                  current_mode="{last_mode}"
+                  combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+        </Fallback>
+      </Sequence>
+      <Fallback>
+        <ScriptCondition code="current_node == 1"/>
+        <Sequence name="default_mode_entry">
+          <Fallback name="combat_cooldown_gate">
+            <ScriptCondition code="last_mode != 2"/>
+            <Condition ID="IsCombatCooldownReady"
+                       ready_time="{@combat_cooldown_ready_time}"/>
+          </Fallback>
+          <Action ID="SetChassisMode"
+                  mode="1"
+                  topic_name="/chassis_mode"
+                  current_mode_in="{@last_mode}"
+                  current_mode="{last_mode}"
+                  combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+        </Sequence>
+      </Fallback>
+    </ReactiveFallback>
   </BehaviorTree>
 
   <!-- Description of Node Models (used by Groot) -->
@@ -165,10 +151,6 @@
                    default="0.0"
                    type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
     </Action>
-    <Decorator ID="TickAfterTimeout">
-      <input_port name="timeout"
-                  type="float">time in seconds to wait before ticking child again</input_port>
-    </Decorator>
   </TreeNodesModel>
 
 </root>

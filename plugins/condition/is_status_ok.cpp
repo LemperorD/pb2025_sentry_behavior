@@ -49,7 +49,7 @@ BT::PortsList IsStatusOKCondition::providedPorts()
       "key_port", "{@referee_robotStatus}", "RobotStatus port on blackboard"),
     BT::InputPort<int>("hp_min", 300, "Minimum HP. NOTE: Sentry init/max HP is 400"),
     BT::InputPort<int>("heat_max", 350, "Maximum heat. NOTE: Sentry heat limit is 400"),
-    BT::InputPort<int>("ammo_min", 0, "Lower then minimum ammo will return FAILURE")};
+    BT::InputPort<int>("ammo_min", 0, "Lower than minimum ammo will return FAILURE")};
 }
 }  // namespace pb2025_sentry_behavior
 
