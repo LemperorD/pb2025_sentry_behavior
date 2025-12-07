@@ -1,113 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" project_name="Project">
-    <include path="bh2026_rmul.xml"/>
-    <include path="dev_rm.xml"/>
-    <include path="merged_main_oyws.xml"/>
-    <include path="mode.xml"/>
-    <include path="rmul_2025.xml"/>
+    <include path="plan_b.xml"/>
     <!-- Description of Node Models (used by Groot) -->
     <TreeNodesModel>
         <Condition ID="CalculateAttackPose">
-            <input_port name="costmap_port" default="{@nav_globalCostmap}" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;">GlobalCostmap port on blackboard</input_port>
-            <input_port name="tracker_port" default="{@tracker_target}" type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;">Vision target port on blackboard</input_port>
-            <output_port name="goal" default="{attack_pose}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</output_port>
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
+            <input_port name="costmap_port" default="{nav_globalCostmap}" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="tracker_port" default="{tracker_target}" type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <output_port name="goal" default="{attack_pose}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
         </Condition>
-        <Action ID="HandlePathBlocked">
-            <input_port name="key_port" default="{@nav_path_status}" type="auto">Placeholder action to handle blocked path (implement logic in plugin)</input_port>
-        </Action>
-        <Action ID="HandlePathClear">
-            <input_port name="key_port" default="{@nav_path_status}" type="auto">Placeholder action to handle cleared path (implement logic in plugin)</input_port>
-        </Action>
         <Condition ID="IsAttacked">
-            <output_port name="gimbal_yaw" default="{gimbal_yaw}" type="float">Move gimbal_yaw to the direction of the hit armor plate</output_port>
-            <output_port name="gimbal_pitch" default="{gimbal_pitch}" type="float">Move gimbal_pitch (const 0.0) to the direction of the hit armor plate</output_port>
-            <input_port name="key_port" default="{@referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;">RobotStatus port on blackboard</input_port>
+            <output_port name="gimbal_yaw" default="{gimbal_yaw}" type="float"/>
+            <output_port name="gimbal_pitch" default="{gimbal_pitch}" type="float"/>
+            <input_port name="key_port" default="{referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
         </Condition>
         <Condition ID="IsCombatCooldownReady">
             <input_port name="ready_time" default="{@combat_cooldown_ready_time}" type="double">Timestamp threshold from SetChassisMode (mode 2 adds 3s). Returns SUCCESS once the current steady-clock time &gt;= ready_time.</input_port>
         </Condition>
         <Condition ID="IsDetectEnemy">
-            <input_port name="armor_id" default="1;2;3;4;5;7" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;">Expected id of armors. Multiple numbers should be separated by the character `;` in Groot2</input_port>
-            <input_port name="max_distance" default="8.000000" type="float">Distance to enemy target</input_port>
-            <input_port name="key_port" default="{@detector_armors}" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port on blackboard</input_port>
+            <input_port name="armor_id" default="1;2;3;4;5;7" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;">Expected id of armors</input_port>
+            <input_port name="max_distance" default="8.0" type="float">Distance to enemy target</input_port>
+            <input_port name="key_port" default="{@detector_armors}" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port</input_port>
         </Condition>
         <Condition ID="IsGameStatus">
-            <input_port name="max_remain_time" default="420" type="int">Maximum remaining time (s)</input_port>
-            <input_port name="min_remain_time" default="0" type="int">Minimum remaining time (s)</input_port>
-            <input_port name="expected_game_progress" default="4" type="int">Expected game progress stage</input_port>
-            <input_port name="key_port" default="{@referee_gameStatus}" type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;">GameStatus port on blackboard</input_port>
-        </Condition>
-        <Condition ID="IsPathBlocked">
-            <input_port name="key_port" default="{@nav_path_status}" type="auto">Navigation path status blackboard key (expected structure defined by nav module)</input_port>
-        </Condition>
-        <Condition ID="IsPathClear">
-            <input_port name="key_port" default="{@nav_path_status}" type="auto">Navigation path status blackboard key (inverse of IsPathBlocked)</input_port>
+            <input_port name="max_remain_time" default="420" type="int"/>
+            <input_port name="min_remain_time" default="0" type="int"/>
+            <input_port name="expected_game_progress" default="4" type="int"/>
+            <input_port name="key_port" default="{referee_gameStatus}" type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
         </Condition>
         <Condition ID="IsRfidDetected">
-            <input_port name="friendly_supply_zone_exchange" default="false" type="bool">己方与兑换区重叠的补给区</input_port>
-            <input_port name="friendly_supply_zone_non_exchange" default="false" type="bool">己方与兑换区不重叠的补给区 / RMUL 补给区</input_port>
-            <input_port name="center_gain_point" default="false" type="bool">中心增益点（仅 RMUL 适用）</input_port>
-            <input_port name="friendly_fortress_gain_point" default="false" type="bool">己方堡垒增益点</input_port>
-            <input_port name="key_port" default="{@referee_rfidStatus}" type="pb_rm_interfaces::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;">RfidStatus port on blackboard</input_port>
+            <input_port name="friendly_supply_zone_exchange" default="false" type="bool"/>
+            <input_port name="friendly_supply_zone_non_exchange" default="false" type="bool"/>
+            <input_port name="center_gain_point" default="false" type="bool"/>
+            <input_port name="friendly_fortress_gain_point" default="false" type="bool"/>
+            <input_port name="key_port" default="{referee_rfidStatus}" type="pb_rm_interfaces::msg::RfidStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
         </Condition>
         <Condition ID="IsStatusOK">
             <input_port name="ammo_min" default="0" type="int">Lower then minimum ammo will return FAILURE</input_port>
-            <input_port name="heat_max" default="350" type="int">Maximum heat. NOTE: Sentry heat limit is 400</input_port>
-            <input_port name="hp_min" default="300" type="int">Minimum HP. NOTE: Sentry init/max HP is 400</input_port>
-            <input_port name="key_port" default="{@referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;">RobotStatus port on blackboard</input_port>
+            <input_port name="heat_max" default="350" type="int">Maximum heat</input_port>
+            <input_port name="hp_min" default="300" type="int">Minimum HP</input_port>
+            <input_port name="key_port" default="{@referee_robotStatus}" type="pb_rm_interfaces::msg::RobotStatus_&lt;std::allocator&lt;void&gt; &gt;">RobotStatus port</input_port>
         </Condition>
         <Condition ID="PubNav2Goal">
-            <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
+            <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
         </Condition>
         <Action ID="PublishGimbalAbsolute">
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
-            <input_port name="duration" type="std::chrono::milliseconds">Publish duration</input_port>
-            <input_port name="gimbal_yaw" type="float">Expected Yaw angle (rad)</input_port>
-            <input_port name="gimbal_pitch" type="float">Expected Pitch angle (rad)</input_port>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
+            <input_port name="duration" type="std::chrono::milliseconds"/>
+            <input_port name="gimbal_yaw" type="float"/>
+            <input_port name="gimbal_pitch" type="float"/>
         </Action>
         <Action ID="PublishGimbalVelocity">
-            <input_port name="duration" type="std::chrono::milliseconds">Publish duration</input_port>
-            <input_port name="yaw_min" default="-3.140000" type="float">Minimum yaw range</input_port>
-            <input_port name="pitch_min" default="-1.570000" type="float">Minimum pitch range</input_port>
-            <input_port name="yaw_max" default="3.140000" type="float">Maximum yaw range</input_port>
-            <input_port name="pitch_max" default="1.570000" type="float">Maximum pitch range</input_port>
-            <input_port name="gimbal_vel_yaw" default="0.000000" type="float">Yaw velocity (rad/s)</input_port>
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
-            <input_port name="gimbal_vel_pitch" default="0.000000" type="float">Pitch velocity (rad/s)</input_port>
+            <input_port name="duration" type="std::chrono::milliseconds"/>
+            <input_port name="yaw_min" default="-3.140000" type="float"/>
+            <input_port name="pitch_min" default="-1.570000" type="float"/>
+            <input_port name="yaw_max" default="3.140000" type="float"/>
+            <input_port name="pitch_max" default="1.570000" type="float"/>
+            <input_port name="gimbal_vel_yaw" default="0.000000" type="float"/>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
+            <input_port name="gimbal_vel_pitch" default="0.000000" type="float"/>
         </Action>
         <Action ID="PublishSpinSpeed">
-            <input_port name="spin_speed" default="0.000000" type="double">Angular Z velocity (rad/s)</input_port>
-            <input_port name="duration" type="std::chrono::milliseconds">Publish then sleep duration in milliseconds</input_port>
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
+            <input_port name="spin_speed" default="0.000000" type="double"/>
+            <input_port name="duration" type="std::chrono::milliseconds"/>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
         </Action>
         <Action ID="PublishTwist">
-            <input_port name="v_y" default="0.000000" type="double">Linear Y velocity (m/s)</input_port>
-            <input_port name="v_yaw" default="0.000000" type="double">Angular Z velocity (rad/s)</input_port>
-            <input_port name="v_x" default="0.000000" type="double">Linear X velocity (m/s)</input_port>
-            <input_port name="duration" type="std::chrono::milliseconds">Publish then sleep duration in milliseconds</input_port>
-            <input_port name="topic_name" default="__default__placeholder__" type="std::string">Topic name</input_port>
+            <input_port name="v_y" default="0.000000" type="double"/>
+            <input_port name="v_yaw" default="0.000000" type="double"/>
+            <input_port name="v_x" default="0.000000" type="double"/>
+            <input_port name="duration" type="std::chrono::milliseconds"/>
+            <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
         </Action>
         <Decorator ID="RateController">
-            <input_port name="hz" default="10.000000" type="double">Rate</input_port>
+            <input_port name="hz" default="10.000000" type="double"/>
         </Decorator>
-        <Control ID="RecoveryNode">
-            <input_port name="num_attempts" default="999" type="int">Number of retries</input_port>
-        </Control>
-        <Action ID="SendNav2Goal">
-            <input_port name="goal" default="0;0;0" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</input_port>
-            <input_port name="action_name" type="std::string">Action server name</input_port>
-        </Action>
         <Action ID="SetChassisMode">
             <input_port name="mode" default="1" type="int">Chassis Mode: 1=Follow, 2=Spin, 3=Survival</input_port>
             <input_port name="topic_name" default="/chassis_mode" type="std::string">ROS2 topic to publish the chassis mode (message type: std_msgs/msg/Int32)</input_port>
-            <input_port name="current_mode_in" default="{@last_mode}" type="int">Optional read-only mapping to the blackboard key holding the last chassis mode (use {@last_mode}); lets the node skip redundant writes.</input_port>
-            <output_port name="current_mode" default="1" type="int">Current chassis mode written when changed. Map this output to a blackboard key (e.g. {@last_mode}) to allow ScriptCondition and other nodes to read the current mode.</output_port>
+            <input_port name="current_mode_in" default="{@current_mode}" type="int">Optional read-only mapping to the blackboard key holding the previously written chassis mode (map to {@current_mode}) to avoid redundant writes.</input_port>
+            <output_port name="current_mode" default="1" type="int">Current chassis mode written when changed. Map this output to a blackboard key (e.g. {@current_mode}) to allow ScriptCondition and other nodes to read the current mode.</output_port>
             <output_port name="combat_cooldown_ready_time" default="0.0" type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
         </Action>
-        <Decorator ID="TickAfterTimeout">
-            <input_port name="timeout" type="float">time in s to wait before ticking child again</input_port>
-        </Decorator>
+        <Condition ID="SubModeSubscriber">
+            <input_port name="topic_name" default="/sub_mode" type="std::string"/>
+            <output_port name="sub_mode" default="{sub_mode}" type="bool">Latest /sub_mode value mirrored to the blackboard</output_port>
+        </Condition>
     </TreeNodesModel>
 </root>

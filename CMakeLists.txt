@@ -82,6 +82,9 @@ list(APPEND plugin_libs calculate_attack_pose)
 ament_auto_add_library(handle_path_blocked SHARED plugins/action/handle_path_blocked.cpp)
 list(APPEND plugin_libs handle_path_blocked)
 
+ament_auto_add_library(set_chassis_mode SHARED plugins/action/set_chassis_mode.cpp)
+list(APPEND plugin_libs set_chassis_mode)
+
 ####### Subscribers #######
 ament_auto_add_library(sub_mode_subscriber SHARED plugins/subscriber/sub_mode_subscriber.cpp)
 list(APPEND plugin_libs sub_mode_subscriber)
