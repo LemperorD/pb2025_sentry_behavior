@@ -40,7 +40,7 @@ BT::PortsList SetChassisModeAction::providedPorts()
   return providedBasicPorts(additional_ports);
 }
 
-bool SetChassisModeAction::setMessage(std_msgs::msg::Int32 & msg)
+bool SetChassisModeAction::setMessage(std_msgs::msg::UInt8 & msg)
 {
   int mode = 1;
   getInput("mode", mode);
@@ -69,7 +69,7 @@ bool SetChassisModeAction::setMessage(std_msgs::msg::Int32 & msg)
   return true;
 }
 
-bool SetChassisModeAction::setHaltMessage(std_msgs::msg::Int32 & msg)
+bool SetChassisModeAction::setHaltMessage(std_msgs::msg::UInt8 & msg)
 {
   // On halt, we publish 0 to indicate stop / no mode (optional)
   msg.data = 0;

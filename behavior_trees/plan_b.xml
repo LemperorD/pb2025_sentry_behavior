@@ -19,17 +19,20 @@
                   topic_name="cmd_spin"/>
           <ReactiveFallback name="mode_execution">
             <SubTree ID="ModeSelect"/>
-            <Fallback name="execute_survive_mode">
-              <Sequence name="execute_survival_mode">
-                <ScriptCondition code="sub_mode == 1"/>
-                <SubTree ID="rmul_supply"/>
-              </Sequence>
-              <Condition ID="PubNav2Goal"
-                         goal="0,0,0"
-                         topic_name="goal_pose"/>
-              <Action ID="HandlePathBlocked"
-                      key_port="{@nav_path_status}"/>
-            </Fallback>
+            <Sequence name="execute_survive_mode">
+              <ScriptCondition code="current_mode == 3"/>
+              <Fallback name="execute_survive_mode">
+                <Sequence name="execute_survival_mode">
+                  <ScriptCondition code="sub_mode == true"/>
+                  <SubTree ID="rmul_supply"/>
+                </Sequence>
+                <Condition ID="PubNav2Goal"
+                           goal="0,0,0"
+                           topic_name="goal_pose"/>
+                <Action ID="HandlePathBlocked"
+                        key_port="{@nav_path_status}"/>
+              </Fallback>
+            </Sequence>
             <Sequence name="execute_combat_mode">
               <ScriptCondition code="current_mode == 2"/>
               <Sequence name="combat_actions">
@@ -48,7 +51,6 @@
               <Decorator ID="RateController"
                          hz="5.0">
                 <Sequence>
-                  <SubTree ID="check_robot_status"/>
                   <Condition ID="PubNav2Goal"
                              goal="4.65;-3.5;0"
                              topic_name="goal_pose"/>
@@ -99,12 +101,12 @@
                        key_port="{@nav_path_status}"/>
             <Action ID="SetSubMode"
                     topic_name="/sub_mode"
-                    mode="1"/>
+                    mode="true"/>
           </Sequence>
           <Sequence>
             <Action ID="SetSubMode"
                     topic_name="/sub_mode"
-                    mode="2"/>
+                    mode="false"/>
           </Sequence>
         </ReactiveFallback>
       </Sequence>
