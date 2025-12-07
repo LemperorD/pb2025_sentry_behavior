@@ -82,8 +82,9 @@ list(APPEND plugin_libs calculate_attack_pose)
 ament_auto_add_library(handle_path_blocked SHARED plugins/action/handle_path_blocked.cpp)
 list(APPEND plugin_libs handle_path_blocked)
 
-ament_auto_add_library(set_sub_mode SHARED plugins/action/set_sub_mode.cpp)
-list(APPEND plugin_libs set_sub_mode)
+####### Subscribers #######
+ament_auto_add_library(sub_mode_subscriber SHARED plugins/subscriber/sub_mode_subscriber.cpp)
+list(APPEND plugin_libs sub_mode_subscriber)
 
 ####### Controls #######
 ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)

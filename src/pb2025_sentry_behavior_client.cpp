@@ -26,9 +26,13 @@ SentryBehaviorClient::SentryBehaviorClient(const rclcpp::NodeOptions & options)
 : Node("sentry_behavior_client", options)
 {
   declare_parameter<std::string>("target_tree", "test_attacked_feedback");
+  declare_parameter<std::string>("sub_mode_topic", "/sub_mode");
   get_parameter("target_tree", target_tree_);
+  get_parameter("sub_mode_topic", sub_mode_topic_);
 
   action_client_ = rclcpp_action::create_client<BTExecuteTree>(this, "pb2025_sentry_behavior");
+
+  sub_mode_pub_ = create_publisher<std_msgs::msg::Bool>(sub_mode_topic_, 10);
 
   if (!action_client_->wait_for_action_server()) {
     RCLCPP_ERROR(get_logger(), "Action server not available!");
@@ -64,9 +68,11 @@ void SentryBehaviorClient::resultCallback(
       break;
     case rclcpp_action::ResultCode::CANCELED:
       RCLCPP_WARN(get_logger(), "Goal was canceled.");
+      publishSubMode(true);
       break;
     case rclcpp_action::ResultCode::ABORTED:
       RCLCPP_ERROR(get_logger(), "Goal failed: %s", result.result->return_message.c_str());
+      publishSubMode(true);
       break;
     case rclcpp_action::ResultCode::UNKNOWN:
       break;
@@ -79,6 +85,19 @@ void SentryBehaviorClient::feedbackCallback(
   const std::shared_ptr<const BTExecuteTree::Feedback> feedback)
 {
   RCLCPP_INFO(get_logger(), "Received feedback: %s", feedback->message.c_str());
+}
+
+void SentryBehaviorClient::publishSubMode(bool blocked)
+{
+  if (!sub_mode_pub_) {
+    RCLCPP_WARN(get_logger(), "Sub-mode publisher not initialized; cannot publish state");
+    return;
+  }
+
+  std_msgs::msg::Bool msg;
+  msg.data = blocked;
+  sub_mode_pub_->publish(msg);
+  RCLCPP_INFO(get_logger(), "Triggered sub-mode %s via client", blocked ? "2" : "1");
 }
 
 }  // namespace pb2025_sentry_behavior

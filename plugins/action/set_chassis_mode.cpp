@@ -31,7 +31,7 @@ BT::PortsList SetChassisModeAction::providedPorts()
     BT::InputPort<int>("mode", 1, "Chassis Mode: 1=Follow, 2=Spin, 3=Survival"),
     BT::InputPort<int>(
       "current_mode_in", -1,
-      "Current chassis mode read from the blackboard (map to {@last_mode}) to avoid redundant writes"),
+      "Current chassis mode read from the blackboard (map to {@current_node}) to avoid redundant writes"),
     BT::OutputPort<int>("current_mode", "Current chassis mode written when changed"),
     BT::OutputPort<double>(
       "combat_cooldown_ready_time",

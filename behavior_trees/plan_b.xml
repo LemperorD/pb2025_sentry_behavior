@@ -2,65 +2,85 @@
 <root BTCPP_format="4"
       main_tree_to_execute="Main">
   <!-- ////////// -->
-  <BehaviorTree ID="Main">
-    <KeepRunningUntilFailure>
-      <ForceSuccess>
-        <Sequence>
-          <SubTree ID="check_game_start"/>
-          <Action ID="SetChassisMode"
-                  mode="1"
-                  topic_name="/chassis_mode"
-                  current_mode_in="{@last_mode}"
-                  current_mode="{last_mode}"
-                  combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-          <Action ID="PublishSpinSpeed"
-                  spin_speed="7.0"
-                  duration="200"
-                  topic_name="cmd_spin"/>
-          <ReactiveFallback name="mode_execution">
-            <SubTree ID="ModeSelect"/>
-            <Sequence name="execute_survive_mode">
-              <ScriptCondition code="current_mode == 3"/>
-              <Fallback name="execute_survive_mode">
-                <Sequence name="execute_survival_mode">
-                  <ScriptCondition code="sub_mode == true"/>
-                  <SubTree ID="rmul_supply"/>
-                </Sequence>
-                <Condition ID="PubNav2Goal"
-                           goal="0,0,0"
-                           topic_name="goal_pose"/>
-                <Action ID="HandlePathBlocked"
-                        key_port="{@nav_path_status}"/>
-              </Fallback>
-            </Sequence>
-            <Sequence name="execute_combat_mode">
-              <ScriptCondition code="current_mode == 2"/>
-              <Sequence name="combat_actions">
-                <Condition ID="CalculateAttackPose"
-                           costmap_port="{nav_globalCostmap}"
-                           tracker_port="{tracker_target}"
-                           goal="{attack_pose}"
-                           topic_name="debug_attack_pose"/>
-                <Condition ID="PubNav2Goal"
-                           goal="{attack_pose}"
-                           topic_name="goal_pose"/>
-              </Sequence>
-            </Sequence>
-            <Sequence name="execute_default_mode">
-              <ScriptCondition code="current_mode == 1"/>
-              <Decorator ID="RateController"
-                         hz="5.0">
-                <Sequence>
-                  <Condition ID="PubNav2Goal"
-                             goal="4.65;-3.5;0"
-                             topic_name="goal_pose"/>
-                </Sequence>
-              </Decorator>
-            </Sequence>
-          </ReactiveFallback>
+  <BehaviorTree ID="Execute">
+    <ReactiveFallback name="mode_execution">
+      <Sequence name="execute_survive_mode">
+        <ScriptCondition code="current_mode == 3"/>
+        <Fallback name="execute_survive_mode">
+          <Sequence name="execute_survival_mode">
+            <ScriptCondition code="sub_mode == false"/>
+            <SubTree ID="rmul_supply"/>
+          </Sequence>
+          <Sequence name="execute_survival_mode">
+            <Condition ID="CalculateAttackPose"
+                       costmap_port="{nav_globalCostmap}"
+                       tracker_port="{tracker_target}"
+                       goal="{attack_pose}"
+                       topic_name="debug_attack_pose"/>
+            <Condition ID="PubNav2Goal"
+                       goal="{attack_pose}"
+                       topic_name="goal_pose"/>
+          </Sequence>
+        </Fallback>
+      </Sequence>
+      <Sequence name="execute_combat_mode">
+        <ScriptCondition code="current_mode == 2"/>
+        <Sequence name="combat_actions">
+          <Condition ID="CalculateAttackPose"
+                     costmap_port="{nav_globalCostmap}"
+                     tracker_port="{tracker_target}"
+                     goal="{attack_pose}"
+                     topic_name="debug_attack_pose"/>
+          <Condition ID="PubNav2Goal"
+                     goal="{attack_pose}"
+                     topic_name="goal_pose"/>
         </Sequence>
-      </ForceSuccess>
-    </KeepRunningUntilFailure>
+      </Sequence>
+      <Sequence name="execute_default_mode">
+        <ScriptCondition code="current_mode == 1"/>
+        <Decorator ID="RateController"
+                   hz="5.0">
+          <Sequence>
+            <Condition ID="PubNav2Goal"
+                       goal="4.65;-3.5;0"
+                       topic_name="goal_pose"/>
+          </Sequence>
+        </Decorator>
+      </Sequence>
+    </ReactiveFallback>
+  </BehaviorTree>
+
+  <!-- ////////// -->
+  <BehaviorTree ID="Initialize">
+    <Action ID="SetChassisMode"
+            mode="1"
+            topic_name="/chassis_mode"
+            current_mode_in="{@current_mode}"
+            current_mode="{current_mode}"
+            combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+  </BehaviorTree>
+
+  <!-- ////////// -->
+  <BehaviorTree ID="Main">
+    <Sequence>
+      <SubTree ID="Initialize"/>
+      <KeepRunningUntilFailure>
+        <ForceSuccess>
+          <Sequence>
+            <SubTree ID="check_game_start"/>
+            <Action ID="PublishSpinSpeed"
+                    spin_speed="7.0"
+                    duration="200"
+                    topic_name="cmd_spin"/>
+            <SubTree ID="SubmodeCheck"/>
+            <Sequence>
+              <SubTree ID="ModeSelect"/>
+              <SubTree ID="Execute"/>
+            </Sequence>
+          </Sequence>
+        </ForceSuccess>
+      </KeepRunningUntilFailure>
+    </Sequence>
   </BehaviorTree>
 
   <!-- ////////// -->
@@ -76,7 +96,7 @@
                        key_port="{@referee_robotStatus}"/>
           </Inverter>
           <Sequence name="maintain_survival">
-            <ScriptCondition code="last_mode == 3"/>
+            <ScriptCondition code="current_mode == 3"/>
             <Inverter>
               <Condition ID="IsStatusOK"
                          ammo_min="0"
@@ -87,28 +107,14 @@
           </Sequence>
         </Fallback>
         <Fallback>
-          <ScriptCondition code="current_node == 3"/>
+          <ScriptCondition code="current_mode == 3"/>
           <Action ID="SetChassisMode"
                   mode="3"
                   topic_name="/chassis_mode"
-                  current_mode_in="{@last_mode}"
-                  current_mode="{last_mode}"
+                  current_mode_in="{@current_mode}"
+                  current_mode="{current_mode}"
                   combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Fallback>
-        <ReactiveFallback name="survival_sub_behaviors">
-          <Sequence>
-            <Condition ID="IsPathClear"
-                       key_port="{@nav_path_status}"/>
-            <Action ID="SetSubMode"
-                    topic_name="/sub_mode"
-                    mode="true"/>
-          </Sequence>
-          <Sequence>
-            <Action ID="SetSubMode"
-                    topic_name="/sub_mode"
-                    mode="false"/>
-          </Sequence>
-        </ReactiveFallback>
       </Sequence>
       <Sequence name="combat_mode">
         <Condition ID="IsDetectEnemy"
@@ -116,32 +122,49 @@
                    max_distance="8.0"
                    key_port="{@detector_armors}"/>
         <Fallback>
-          <ScriptCondition code="current_node == 2"/>
+          <ScriptCondition code="current_mode == 2"/>
           <Action ID="SetChassisMode"
                   mode="2"
                   topic_name="/chassis_mode"
-                  current_mode_in="{@last_mode}"
-                  current_mode="{last_mode}"
+                  current_mode_in="{@current_mode}"
+                  current_mode="{current_mode}"
                   combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Fallback>
       </Sequence>
       <Fallback>
-        <ScriptCondition code="current_node == 1"/>
+        <ScriptCondition code="current_mode == 1"/>
         <Sequence name="default_mode_entry">
           <Fallback name="combat_cooldown_gate">
-            <ScriptCondition code="last_mode != 2"/>
+            <ScriptCondition code="current_mode != 2"/>
             <Condition ID="IsCombatCooldownReady"
                        ready_time="{@combat_cooldown_ready_time}"/>
           </Fallback>
           <Action ID="SetChassisMode"
                   mode="1"
                   topic_name="/chassis_mode"
-                  current_mode_in="{@last_mode}"
-                  current_mode="{last_mode}"
+                  current_mode_in="{@current_mode}"
+                  current_mode="{current_mode}"
                   combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Sequence>
       </Fallback>
     </ReactiveFallback>
+  </BehaviorTree>
+
+  <!-- ////////// -->
+  <BehaviorTree ID="SubmodeCheck">
+    <Sequence>
+      <ForceSuccess>
+        <Sequence>
+          <ScriptCondition code="current_mode == 3"/>
+          <Condition ID="PubNav2Goal"
+                     goal="0;0;0"
+                     topic_name="goal_pose"/>
+          <Condition ID="SubModeSubscriber"
+                     topic_name="/sub_mode"
+                     sub_mode="{sub_mode}"/>
+        </Sequence>
+      </ForceSuccess>
+    </Sequence>
   </BehaviorTree>
 
   <!-- ////////// -->
@@ -334,11 +357,6 @@
                   default="__default__placeholder__"
                   type="std::string"/>
     </Condition>
-    <Action ID="HandlePathBlocked">
-      <input_port name="key_port"
-                  default="{@nav_path_status}"
-                  type="auto">Placeholder action to handle blocked path (implement logic in plugin)</input_port>
-    </Action>
     <Condition ID="IsAttacked">
       <output_port name="gimbal_yaw"
                    default="{gimbal_yaw}"
@@ -379,11 +397,6 @@
       <input_port name="key_port"
                   default="{referee_gameStatus}"
                   type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
-    </Condition>
-    <Condition ID="IsPathClear">
-      <input_port name="key_port"
-                  default="{@nav_path_status}"
-                  type="auto">Navigation path status blackboard key (inverse of IsPathBlocked)</input_port>
     </Condition>
     <Condition ID="IsRfidDetected">
       <input_port name="friendly_supply_zone_exchange"
@@ -499,22 +512,23 @@
                   default="/chassis_mode"
                   type="std::string">ROS2 topic to publish the chassis mode (message type: std_msgs/msg/Int32)</input_port>
       <input_port name="current_mode_in"
-                  default="{@last_mode}"
-                  type="int">Optional read-only mapping to the blackboard key holding the last chassis mode (use {@last_mode}); lets the node skip redundant writes.</input_port>
+                  default="{@current_mode}"
+                  type="int">Optional read-only mapping to the blackboard key holding the previously written chassis mode (map to {@current_mode}) to avoid redundant writes.</input_port>
       <output_port name="current_mode"
                    default="1"
-                   type="int">Current chassis mode written when changed. Map this output to a blackboard key (e.g. {@last_mode}) to allow ScriptCondition and other nodes to read the current mode.</output_port>
+                   type="int">Current chassis mode written when changed. Map this output to a blackboard key (e.g. {@current_mode}) to allow ScriptCondition and other nodes to read the current mode.</output_port>
       <output_port name="combat_cooldown_ready_time"
                    default="0.0"
                    type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
     </Action>
-    <Action ID="SetSubMode"
-            editable="true">
+    <Condition ID="SubModeSubscriber">
       <input_port name="topic_name"
-                  default="/sub_mode"/>
-      <input_port name="mode"
-                  default="1"/>
-    </Action>
+                  default="/sub_mode"
+                  type="std::string"/>
+      <output_port name="sub_mode"
+                   default="{sub_mode}"
+                   type="bool">Latest /sub_mode value mirrored to the blackboard</output_port>
+    </Condition>
   </TreeNodesModel>
 
 </root>
