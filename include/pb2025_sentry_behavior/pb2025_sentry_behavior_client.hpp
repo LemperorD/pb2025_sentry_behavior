@@ -21,6 +21,7 @@
 #include "btcpp_ros2_interfaces/action/execute_tree.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/client.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 namespace pb2025_sentry_behavior
 {
@@ -39,10 +40,13 @@ private:
   void feedbackCallback(
     GoalHandleBTExecuateTree::SharedPtr goal_handle,
     const std::shared_ptr<const BTExecuteTree::Feedback> feedback);
+  void publishSubMode(bool blocked);
 
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp_action::Client<BTExecuteTree>::SharedPtr action_client_;
   std::string target_tree_;
+  std::string sub_mode_topic_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr sub_mode_pub_;
 };
 
 }  // namespace pb2025_sentry_behavior

@@ -31,7 +31,7 @@ BT::PortsList SetChassisModeAction::providedPorts()
     BT::InputPort<int>("mode", 1, "Chassis Mode: 1=Follow, 2=Spin, 3=Survival"),
     BT::InputPort<int>(
       "current_mode_in", -1,
-      "Current chassis mode read from the blackboard (map to {@last_mode}) to avoid redundant writes"),
+      "Current chassis mode read from the blackboard (map to {@current_node}) to avoid redundant writes"),
     BT::OutputPort<int>("current_mode", "Current chassis mode written when changed"),
     BT::OutputPort<double>(
       "combat_cooldown_ready_time",
@@ -40,7 +40,7 @@ BT::PortsList SetChassisModeAction::providedPorts()
   return providedBasicPorts(additional_ports);
 }
 
-bool SetChassisModeAction::setMessage(std_msgs::msg::Int32 & msg)
+bool SetChassisModeAction::setMessage(std_msgs::msg::UInt8 & msg)
 {
   int mode = 1;
   getInput("mode", mode);
@@ -69,7 +69,7 @@ bool SetChassisModeAction::setMessage(std_msgs::msg::Int32 & msg)
   return true;
 }
 
-bool SetChassisModeAction::setHaltMessage(std_msgs::msg::Int32 & msg)
+bool SetChassisModeAction::setHaltMessage(std_msgs::msg::UInt8 & msg)
 {
   // On halt, we publish 0 to indicate stop / no mode (optional)
   msg.data = 0;

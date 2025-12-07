@@ -12,31 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_CHASSIS_MODE_HPP_
-#define PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_CHASSIS_MODE_HPP_
+#ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_SUB_MODE_HPP_
+#define PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_SUB_MODE_HPP_
 
-#include <std_msgs/msg/detail/u_int8__struct.hpp>
 #include <string>
 
 #include "behaviortree_ros2/bt_topic_pub_action_node.hpp"
-#include "std_msgs/msg/u_int8.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 namespace pb2025_sentry_behavior
 {
 
-class SetChassisModeAction : public BT::RosTopicPubStatefulActionNode<std_msgs::msg::UInt8>
+class SetSubModeAction : public BT::RosTopicPubStatefulActionNode<std_msgs::msg::Bool>
 {
 public:
-  SetChassisModeAction(
+  SetSubModeAction(
     const std::string & name, const BT::NodeConfig & config, const BT::RosNodeParams & params);
 
   static BT::PortsList providedPorts();
 
-  bool setMessage(std_msgs::msg::UInt8 & msg) override;
+  bool setMessage(std_msgs::msg::Bool & msg) override;
 
-  bool setHaltMessage(std_msgs::msg::UInt8 & msg) override;
+  bool setHaltMessage(std_msgs::msg::Bool & msg) override;
 };
 
 }  // namespace pb2025_sentry_behavior
 
-#endif  // PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_CHASSIS_MODE_HPP_
+#endif  // PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_SUB_MODE_HPP_
