@@ -19,10 +19,17 @@
                   topic_name="cmd_spin"/>
           <ReactiveFallback name="mode_execution">
             <SubTree ID="ModeSelect"/>
-            <Sequence name="execute_survival_mode">
-              <ScriptCondition code="current_mode == 3"/>
-              <SubTree ID="rmul_supply"/>
-            </Sequence>
+            <Fallback name="execute_survive_mode">
+              <Sequence name="execute_survival_mode">
+                <ScriptCondition code="sub_mode == 1"/>
+                <SubTree ID="rmul_supply"/>
+              </Sequence>
+              <Condition ID="PubNav2Goal"
+                         goal="0,0,0"
+                         topic_name="goal_pose"/>
+              <Action ID="HandlePathBlocked"
+                      key_port="{@nav_path_status}"/>
+            </Fallback>
             <Sequence name="execute_combat_mode">
               <ScriptCondition code="current_mode == 2"/>
               <Sequence name="combat_actions">
@@ -87,19 +94,18 @@
                   combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Fallback>
         <ReactiveFallback name="survival_sub_behaviors">
-          <Sequence name="path_blocked_logic">
-            <Condition ID="IsPathBlocked"
-                       key_port="{@nav_path_status}"/>
-            <Action ID="HandlePathBlocked"
-                    key_port="{@nav_path_status}"/>
-          </Sequence>
-          <Sequence name="path_clear_logic">
+          <Sequence>
             <Condition ID="IsPathClear"
                        key_port="{@nav_path_status}"/>
-            <Action ID="HandlePathClear"
-                    key_port="{@nav_path_status}"/>
+            <Action ID="SetSubMode"
+                    topic_name="/sub_mode"
+                    mode="1"/>
           </Sequence>
-          <AlwaysSuccess/>
+          <Sequence>
+            <Action ID="SetSubMode"
+                    topic_name="/sub_mode"
+                    mode="2"/>
+          </Sequence>
         </ReactiveFallback>
       </Sequence>
       <Sequence name="combat_mode">
@@ -174,11 +180,9 @@
                    hp_min="399"
                    key_port="{@referee_robotStatus}"/>
       </RetryUntilSuccessful>
-      <Sequence>
-        <Condition ID="PubNav2Goal"
-                   goal="0;0;0"
-                   topic_name="goal_pose"/>
-      </Sequence>
+      <Condition ID="PubNav2Goal"
+                 goal="0;0;0"
+                 topic_name="goal_pose"/>
     </WhileDoElse>
   </BehaviorTree>
 
@@ -333,11 +337,6 @@
                   default="{@nav_path_status}"
                   type="auto">Placeholder action to handle blocked path (implement logic in plugin)</input_port>
     </Action>
-    <Action ID="HandlePathClear">
-      <input_port name="key_port"
-                  default="{@nav_path_status}"
-                  type="auto">Placeholder action to handle cleared path (implement logic in plugin)</input_port>
-    </Action>
     <Condition ID="IsAttacked">
       <output_port name="gimbal_yaw"
                    default="{gimbal_yaw}"
@@ -378,11 +377,6 @@
       <input_port name="key_port"
                   default="{referee_gameStatus}"
                   type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
-    </Condition>
-    <Condition ID="IsPathBlocked">
-      <input_port name="key_port"
-                  default="{@nav_path_status}"
-                  type="auto">Navigation path status blackboard key (expected structure defined by nav module)</input_port>
     </Condition>
     <Condition ID="IsPathClear">
       <input_port name="key_port"
@@ -511,6 +505,13 @@
       <output_port name="combat_cooldown_ready_time"
                    default="0.0"
                    type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
+    </Action>
+    <Action ID="SetSubMode"
+            editable="true">
+      <input_port name="topic_name"
+                  default="/sub_mode"/>
+      <input_port name="mode"
+                  default="1"/>
     </Action>
   </TreeNodesModel>
 

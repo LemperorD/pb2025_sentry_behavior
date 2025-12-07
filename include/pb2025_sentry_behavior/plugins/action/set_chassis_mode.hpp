@@ -15,15 +15,16 @@
 #ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_CHASSIS_MODE_HPP_
 #define PB2025_SENTRY_BEHAVIOR__PLUGINS__ACTION__SET_CHASSIS_MODE_HPP_
 
+#include <std_msgs/msg/detail/u_int8__struct.hpp>
 #include <string>
 
 #include "behaviortree_ros2/bt_topic_pub_action_node.hpp"
-#include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 namespace pb2025_sentry_behavior
 {
 
-class SetChassisModeAction : public BT::RosTopicPubStatefulActionNode<std_msgs::msg::Int32>
+class SetChassisModeAction : public BT::RosTopicPubStatefulActionNode<std_msgs::msg::UInt8>
 {
 public:
   SetChassisModeAction(
@@ -31,9 +32,9 @@ public:
 
   static BT::PortsList providedPorts();
 
-  bool setMessage(std_msgs::msg::Int32 & msg) override;
+  bool setMessage(std_msgs::msg::UInt8 & msg) override;
 
-  bool setHaltMessage(std_msgs::msg::Int32 & msg) override;
+  bool setHaltMessage(std_msgs::msg::UInt8 & msg) override;
 };
 
 }  // namespace pb2025_sentry_behavior

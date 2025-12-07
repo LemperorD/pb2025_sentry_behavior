@@ -51,9 +51,6 @@ list(APPEND plugin_libs is_attacked)
 ament_auto_add_library(is_detect_enemy SHARED plugins/condition/is_detect_enemy.cpp)
 list(APPEND plugin_libs is_detect_enemy)
 
-ament_auto_add_library(is_path_blocked SHARED plugins/condition/is_path_blocked.cpp)
-list(APPEND plugin_libs is_path_blocked)
-
 ament_auto_add_library(is_path_clear SHARED plugins/condition/is_path_clear.cpp)
 list(APPEND plugin_libs is_path_clear)
 
@@ -84,9 +81,6 @@ list(APPEND plugin_libs calculate_attack_pose)
 
 ament_auto_add_library(handle_path_blocked SHARED plugins/action/handle_path_blocked.cpp)
 list(APPEND plugin_libs handle_path_blocked)
-
-ament_auto_add_library(handle_path_clear SHARED plugins/action/handle_path_clear.cpp)
-list(APPEND plugin_libs handle_path_clear)
 
 ####### Controls #######
 ament_auto_add_library(recovery_node SHARED plugins/control/recovery_node.cpp)
