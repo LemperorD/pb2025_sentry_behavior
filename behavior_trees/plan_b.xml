@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4"
       main_tree_to_execute="Main">
@@ -10,7 +9,8 @@
         <Fallback name="execute_survive_mode">
           <Sequence name="execute_survival_mode">
             <ScriptCondition code="sub_mode == false"/>
-            <SubTree ID="rmul_supply"/>
+            <SubTree ID="rmul_supply"
+                     _autoremap="true"/>
           </Sequence>
           <Sequence name="execute_survival_mode">
             <Condition ID="CalculateAttackPose"
@@ -53,30 +53,38 @@
 
   <!-- ////////// -->
   <BehaviorTree ID="Initialize">
-    <Action ID="SetChassisMode"
-            mode="1"
-            topic_name="/chassis_mode"
-            current_mode_in="{@current_mode}"
-            current_mode="{current_mode}"
-            combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+    <Sequence>
+      <Script code="current_mode:=-1"/>
+      <Action ID="SetChassisMode"
+              mode="1"
+              topic_name="/chassis_mode"
+              current_mode_in="{@current_mode}"
+              current_mode="{current_mode}"
+              combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+    </Sequence>
   </BehaviorTree>
 
   <!-- ////////// -->
   <BehaviorTree ID="Main">
     <Sequence>
-      <SubTree ID="Initialize"/>
+      <SubTree ID="Initialize"
+               _autoremap="true"/>
       <KeepRunningUntilFailure>
         <ForceSuccess>
           <Sequence>
-            <SubTree ID="check_game_start"/>
+            <SubTree ID="check_game_start"
+                     _autoremap="true"/>
             <Action ID="PublishSpinSpeed"
                     spin_speed="7.0"
                     duration="200"
                     topic_name="cmd_spin"/>
-            <SubTree ID="SubmodeCheck"/>
+            <SubTree ID="SubmodeCheck"
+                     _autoremap="true"/>
             <Sequence>
-              <SubTree ID="ModeSelect"/>
-              <SubTree ID="Execute"/>
+              <SubTree ID="ModeSelect"
+                       _autoremap="true"/>
+              <SubTree ID="Execute"
+                       _autoremap="true"/>
             </Sequence>
           </Sequence>
         </ForceSuccess>
