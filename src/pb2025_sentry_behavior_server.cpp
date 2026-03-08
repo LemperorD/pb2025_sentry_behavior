@@ -16,10 +16,16 @@
 
 #include <filesystem>
 #include <fstream>
+#include <chrono>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 #include "auto_aim_interfaces/msg/armors.hpp"
 #include "auto_aim_interfaces/msg/target.hpp"
 #include "behaviortree_cpp/xml_parsing.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "pb_rm_interfaces/msg/buff.hpp"
 #include "pb_rm_interfaces/msg/event_data.hpp"
@@ -28,8 +34,58 @@
 #include "pb_rm_interfaces/msg/ground_robot_position.hpp"
 #include "pb_rm_interfaces/msg/rfid_status.hpp"
 #include "pb_rm_interfaces/msg/robot_status.hpp"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 namespace pb2025_sentry_behavior
 {
+
+namespace
+{
+
+std::vector<std::string> splitBySemicolon(const std::string & text)
+{
+  std::vector<std::string> parts;
+  std::stringstream ss(text);
+  std::string item;
+  while (std::getline(ss, item, ';')) {
+    parts.push_back(item);
+  }
+  return parts;
+}
+
+geometry_msgs::msg::PoseStamped parseGoalParam(const std::string & goal_str)
+{
+  auto parts = splitBySemicolon(goal_str);
+
+  geometry_msgs::msg::PoseStamped goal;
+  goal.header.frame_id = "map";
+
+  if (parts.size() == 3) {
+    goal.pose.position.x = std::stod(parts[0]);
+    goal.pose.position.y = std::stod(parts[1]);
+    goal.pose.position.z = 0.0;
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, std::stod(parts[2]));
+    goal.pose.orientation = tf2::toMsg(q);
+    return goal;
+  }
+
+  if (parts.size() == 7) {
+    goal.pose.position.x = std::stod(parts[0]);
+    goal.pose.position.y = std::stod(parts[1]);
+    goal.pose.position.z = std::stod(parts[2]);
+    goal.pose.orientation.x = std::stod(parts[3]);
+    goal.pose.orientation.y = std::stod(parts[4]);
+    goal.pose.orientation.z = std::stod(parts[5]);
+    goal.pose.orientation.w = std::stod(parts[6]);
+    return goal;
+  }
+
+  throw std::invalid_argument(
+          "Goal format must be 'x;y;yaw' or 'x;y;z;qx;qy;qz;qw', got: " + goal_str);
+}
+
+}  // namespace
 
 template <typename T>
 void SentryBehaviorServer::subscribe(
@@ -47,6 +103,26 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   node()->declare_parameter("use_cout_logger", false);
   node()->get_parameter("use_cout_logger", use_cout_logger_);
 
+  node()->declare_parameter("mode1_goal", "4.65;-3.5;0");
+  node()->declare_parameter("mode3_goal", "0;0;0");
+
+  std::string mode1_goal_param;
+  std::string mode3_goal_param;
+  node()->get_parameter("mode1_goal", mode1_goal_param);
+  node()->get_parameter("mode3_goal", mode3_goal_param);
+
+  try {
+    globalBlackboard()->set("mode1_goal", parseGoalParam(mode1_goal_param));
+    globalBlackboard()->set("mode3_goal", parseGoalParam(mode3_goal_param));
+  } catch (const std::exception & e) {
+    RCLCPP_WARN(
+      node()->get_logger(),
+      "Invalid mode goal parameter (%s). Falling back to defaults.",
+      e.what());
+    globalBlackboard()->set("mode1_goal", parseGoalParam("4.65;-3.5;0"));
+    globalBlackboard()->set("mode3_goal", parseGoalParam("0;0;0"));
+  }
+
   subscribe<pb_rm_interfaces::msg::EventData>("referee/event_data", "referee_eventData");
   subscribe<pb_rm_interfaces::msg::GameRobotHP>("/referee/all_robot_hp", "referee_allRobotHP");
   subscribe<pb_rm_interfaces::msg::GameStatus>("/referee/game_status", "referee_gameStatus");
@@ -60,6 +136,24 @@ SentryBehaviorServer::SentryBehaviorServer(const rclcpp::NodeOptions & options)
   subscribe<auto_aim_interfaces::msg::Armors>("detector/armors", "detector_armors", detector_qos);
   auto tracker_qos = rclcpp::SensorDataQoS();
   subscribe<auto_aim_interfaces::msg::Target>("tracker/target", "tracker_target", tracker_qos);
+  {
+    geometry_msgs::msg::Point init_enemy_pos;
+    init_enemy_pos.x = 0.0;
+    init_enemy_pos.y = 0.0;
+    init_enemy_pos.z = 0.0;
+    globalBlackboard()->set("serial_enemyPos", init_enemy_pos);
+    globalBlackboard()->set("serial_enemyPosStamp", -1.0);
+
+    auto enemy_pos_sub = node()->create_subscription<geometry_msgs::msg::Point>(
+      "/serial/EnemyPos", tracker_qos,
+      [this](const geometry_msgs::msg::Point::SharedPtr msg) {
+        globalBlackboard()->set("serial_enemyPos", *msg);
+        const auto now = std::chrono::steady_clock::now();
+        const double now_sec = std::chrono::duration<double>(now.time_since_epoch()).count();
+        globalBlackboard()->set("serial_enemyPosStamp", now_sec);
+      });
+    subscriptions_.push_back(enemy_pos_sub);
+  }
 
   auto costmap_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
   subscribe<nav_msgs::msg::OccupancyGrid>(

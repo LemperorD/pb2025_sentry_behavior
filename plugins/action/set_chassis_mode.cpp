@@ -49,7 +49,8 @@ bool SetChassisModeAction::setMessage(std_msgs::msg::UInt8 & msg)
 
   // write the new mode back to the blackboard so other nodes can read it
   int prev_mode = -1;
-  if (getInput("current_mode_in", prev_mode) && prev_mode == mode) {
+  const bool mode_unchanged = getInput("current_mode_in", prev_mode) && prev_mode == mode;
+  if (mode_unchanged) {
     RCLCPP_DEBUG(
       node_->get_logger(),
       "SetChassisMode: mode %d unchanged, skipping blackboard write", mode);
@@ -57,12 +58,16 @@ bool SetChassisModeAction::setMessage(std_msgs::msg::UInt8 & msg)
     setOutput("current_mode", mode);
   }
 
-  const double now_sec = std::chrono::duration<double>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
-  if (mode == 2) {
-    setOutput("combat_cooldown_ready_time", now_sec + 3.0);
-  } else {
-    setOutput("combat_cooldown_ready_time", now_sec);
+  // Update cooldown timestamp only when mode actually changes to avoid
+  // repeatedly pushing the ready time forward.
+  if (!mode_unchanged) {
+    const double now_sec = std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (mode == 2) {
+      setOutput("combat_cooldown_ready_time", now_sec + 3.0);
+    } else {
+      setOutput("combat_cooldown_ready_time", now_sec);
+    }
   }
 
   RCLCPP_INFO(node_->get_logger(), "SetChassisMode publishing mode=%d", mode);
