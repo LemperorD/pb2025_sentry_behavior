@@ -14,9 +14,9 @@
 
 #include "pb2025_sentry_behavior/plugins/action/calculate_attack_pose.hpp"
 
-#include "auto_aim_interfaces/msg/target.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "nav2_util/robot_utils.hpp"
+#include "tf2/utils.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 
@@ -35,6 +35,10 @@ CalculateAttackPoseAction::CalculateAttackPoseAction(
   declare_parameter_if_not_declared(node_, name + ".num_sectors", rclcpp::ParameterValue(36));
   declare_parameter_if_not_declared(node_, name + ".cost_threshold", rclcpp::ParameterValue(50));
   declare_parameter_if_not_declared(
+    node_, name + ".fresh_timeout_sec", rclcpp::ParameterValue(0.5));
+  declare_parameter_if_not_declared(
+    node_, name + ".enemy_pos_in_bigyaw_frame", rclcpp::ParameterValue(true));
+  declare_parameter_if_not_declared(
     node_, name + ".robot_base_frame", rclcpp::ParameterValue("chassis"));
   declare_parameter_if_not_declared(
     node_, name + ".transform_tolerance", rclcpp::ParameterValue(0.5));
@@ -47,6 +51,8 @@ CalculateAttackPoseAction::CalculateAttackPoseAction(
   node_->get_parameter(name + ".attack_radius", params_.attack_radius);
   node_->get_parameter(name + ".num_sectors", params_.num_sectors);
   node_->get_parameter(name + ".cost_threshold", params_.cost_threshold);
+  node_->get_parameter(name + ".fresh_timeout_sec", params_.fresh_timeout_sec);
+  node_->get_parameter(name + ".enemy_pos_in_bigyaw_frame", params_.enemy_pos_in_bigyaw_frame);
   node_->get_parameter(name + ".robot_base_frame", params_.robot_base_frame);
   node_->get_parameter(name + ".transform_tolerance", params_.transform_tolerance);
   node_->get_parameter(name + ".max_visualization_distance", params_.max_visualization_distance);
@@ -59,8 +65,13 @@ BT::PortsList CalculateAttackPoseAction::providedPorts()
   return providedBasicPorts({
     BT::InputPort<nav_msgs::msg::OccupancyGrid>(
       "costmap_port", "{@nav_globalCostmap}", "GlobalCostmap port on blackboard"),
-    BT::InputPort<auto_aim_interfaces::msg::Target>(
-      "tracker_port", "{@tracker_target}", "Vision target port on blackboard"),
+    BT::InputPort<geometry_msgs::msg::Point>(
+      "enemy_pos_port", "{@serial_enemyPos}", "Enemy position port on blackboard"),
+    BT::InputPort<double>(
+      "enemy_stamp_port", "{@serial_enemyPosStamp}",
+      "Steady-clock receive timestamp (seconds) for enemy_pos_port"),
+    BT::InputPort<double>(
+      "fresh_timeout_sec", "0.5", "Freshness timeout in seconds for enemy_pos_port"),
     BT::OutputPort<PoseStamped>(
       "goal", "{attack_pose}", "Expected goal pose that send to nav2. Fill with format `x;y;yaw`"),
   });
@@ -69,14 +80,26 @@ BT::PortsList CalculateAttackPoseAction::providedPorts()
 bool CalculateAttackPoseAction::setMessage(visualization_msgs::msg::MarkerArray & msg)
 {
   auto global_costmap = getInput<nav_msgs::msg::OccupancyGrid>("costmap_port");
-  auto tracker_target = getInput<auto_aim_interfaces::msg::Target>("tracker_port");
+  auto enemy_pos = getInput<geometry_msgs::msg::Point>("enemy_pos_port");
+  auto enemy_stamp = getInput<double>("enemy_stamp_port");
+  auto fresh_timeout = getInput<double>("fresh_timeout_sec");
 
   if (!global_costmap) {
-    RCLCPP_ERROR(node_->get_logger(), "Missing required input: costmap_port");
+    RCLCPP_INFO_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 5000,
+      "costmap_port not available yet, waiting for global costmap message");
     return false;
   }
-  if (!tracker_target) {
-    RCLCPP_ERROR(node_->get_logger(), "Missing required input: tracker_port");
+  if (!enemy_pos) {
+    RCLCPP_ERROR(node_->get_logger(), "Missing required input: enemy_pos_port");
+    return false;
+  }
+  if (!enemy_stamp) {
+    RCLCPP_ERROR(node_->get_logger(), "Missing required input: enemy_stamp_port");
+    return false;
+  }
+  if (!fresh_timeout) {
+    RCLCPP_ERROR(node_->get_logger(), "Missing required input: fresh_timeout_sec");
     return false;
   }
 
@@ -84,90 +107,77 @@ bool CalculateAttackPoseAction::setMessage(visualization_msgs::msg::MarkerArray 
   std::vector<Point> feasible_points;
   PoseStamped robot_pose;
 
-  // If tracker lost target, use last known center position
-  if (!tracker_target->tracking && tracker_target->id == "") {
-    RCLCPP_INFO(
-      node_->get_logger(),
-      "Tracker target is not currently being tracked. Directing to last known position.");
-    if (enemy_on_costmap_.point.x == 0 && enemy_on_costmap_.point.y == 0) {
-      RCLCPP_WARN(node_->get_logger(), "No last known position to direct to.");
-      return false;
-    }
-    PoseStamped pose;
-    pose.pose.position = enemy_on_costmap_.point;
-    setOutput("goal", pose);
-  } else {
-    // Transform enemy position
-    PointStamped enemy_point;
-    enemy_point.header = tracker_target->header;
-    enemy_point.point = tracker_target->position;
-    if (!transformPoseInTargetFrame(
-          enemy_point, enemy_on_costmap_, *tf_buffer_, global_costmap->header.frame_id,
-          params_.transform_tolerance)) {
-      RCLCPP_ERROR(node_->get_logger(), "Failed to transform enemy position");
-      return false;
-    }
-
-    // Generate candidate points
-    candidates = generateCandidatePoints(enemy_on_costmap_.point);
-
-    // Filter feasible points
-    feasible_points = filterFeasiblePoints(candidates, global_costmap.value());
-    if (feasible_points.empty()) {
-      RCLCPP_WARN(node_->get_logger(), "No feasible attack points found");
-      return false;
-    }
-
-    // Get robot position
-    if (!nav2_util::getCurrentPose(
-          robot_pose, *tf_buffer_, global_costmap->header.frame_id, params_.robot_base_frame,
-          params_.transform_tolerance)) {
-      RCLCPP_ERROR(node_->get_logger(), "Failed to get robot pose");
-      return false;
-    }
-
-    // Select best point
-    const auto best_point = selectBestPoint(feasible_points, robot_pose.pose.position);
-
-    // Create attack pose
-    const auto attack_pose = createAttackPose(best_point, enemy_on_costmap_);
-    setOutput("goal", attack_pose);
-
-    // Create visualization
-    if (params_.visualize) {
-      createVisualizationMarkers(
-        msg, enemy_on_costmap_.point, candidates, feasible_points, robot_pose.pose.position,
-        global_costmap.value());
-    }
+  if (!nav2_util::getCurrentPose(
+        robot_pose, *tf_buffer_, global_costmap->header.frame_id, params_.robot_base_frame,
+        params_.transform_tolerance)) {
+    RCLCPP_ERROR(node_->get_logger(), "Failed to get robot pose");
+    return false;
   }
+
+  const auto now = std::chrono::steady_clock::now();
+  const double now_sec = std::chrono::duration<double>(now.time_since_epoch()).count();
+  const bool stamp_valid = *enemy_stamp >= 0.0;
+  const bool fresh = stamp_valid && (now_sec - *enemy_stamp) <= *fresh_timeout;
+
+  if (fresh) {
+    enemy_on_costmap_.header.frame_id = global_costmap->header.frame_id;
+    enemy_on_costmap_.header.stamp = node_->now();
+    enemy_on_costmap_.point = convertEnemyPointToCostmapFrame(*enemy_pos, robot_pose);
+  } else if (enemy_on_costmap_.header.frame_id.empty()) {
+    RCLCPP_INFO_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 3000,
+      "Enemy position is stale and no cached target is available yet.");
+    return false;
+  }
+
+  // Generate candidate points
+  candidates = generateCandidatePoints(enemy_on_costmap_.point);
+
+  // Filter feasible points
+  feasible_points = filterFeasiblePoints(candidates, global_costmap.value());
+  if (feasible_points.empty()) {
+    RCLCPP_WARN(node_->get_logger(), "No feasible attack points found");
+    return false;
+  }
+
+  // Select best point
+  const auto best_point = selectBestPoint(feasible_points, robot_pose.pose.position);
+
+  // Create attack pose
+  const auto attack_pose = createAttackPose(best_point, enemy_on_costmap_);
+  setOutput("goal", attack_pose);
+
+  // Create visualization
+  if (params_.visualize) {
+    createVisualizationMarkers(
+      msg, enemy_on_costmap_.point, candidates, feasible_points, robot_pose.pose.position,
+      global_costmap.value());
+  }
+
   return true;
 }
 
-bool CalculateAttackPoseAction::transformPoseInTargetFrame(
-  const PointStamped & input_pose, PointStamped & transformed_pose, tf2_ros::Buffer & tf_buffer,
-  const std::string target_frame, const double transform_timeout)
+Point CalculateAttackPoseAction::convertEnemyPointToCostmapFrame(
+  const Point & enemy_point_input, const PoseStamped & robot_pose)
 {
-  static rclcpp::Logger logger = rclcpp::get_logger("transformPoseInTargetFrame");
-
-  try {
-    transformed_pose =
-      tf_buffer.transform(input_pose, target_frame, tf2::durationFromSec(transform_timeout));
-    return true;
-  } catch (tf2::LookupException & ex) {
-    RCLCPP_ERROR(logger, "No Transform available Error looking up target frame: %s\n", ex.what());
-  } catch (tf2::ConnectivityException & ex) {
-    RCLCPP_ERROR(logger, "Connectivity Error looking up target frame: %s\n", ex.what());
-  } catch (tf2::ExtrapolationException & ex) {
-    RCLCPP_ERROR(logger, "Extrapolation Error looking up target frame: %s\n", ex.what());
-  } catch (tf2::TimeoutException & ex) {
-    RCLCPP_ERROR(logger, "Transform timeout with tolerance: %.4f", transform_timeout);
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_ERROR(
-      logger, "Failed to transform from %s to %s", input_pose.header.frame_id.c_str(),
-      target_frame.c_str());
+  // Visual input in big-yaw frame (right-handed):
+  // +Y: forward, +X: right.
+  // Convert to ROS base local convention first: +X forward, +Y left.
+  if (!params_.enemy_pos_in_bigyaw_frame) {
+    return enemy_point_input;
   }
 
-  return false;
+  const double local_x_forward = enemy_point_input.y;
+  const double local_y_left = -enemy_point_input.x;
+
+  const double yaw = tf2::getYaw(robot_pose.pose.orientation);
+  Point out;
+  out.x =
+    robot_pose.pose.position.x + std::cos(yaw) * local_x_forward - std::sin(yaw) * local_y_left;
+  out.y =
+    robot_pose.pose.position.y + std::sin(yaw) * local_x_forward + std::cos(yaw) * local_y_left;
+  out.z = enemy_point_input.z;
+  return out;
 }
 
 std::vector<Point> CalculateAttackPoseAction::generateCandidatePoints(const Point & enemy_position)

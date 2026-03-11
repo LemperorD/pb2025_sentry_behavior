@@ -47,9 +47,11 @@ BT::NodeStatus SubModeSubscriber::onTick(const std::shared_ptr<std_msgs::msg::Bo
     RCLCPP_DEBUG(logger(), "SubModeSubscriber received sub_mode=%s", last_value_ ? "true" : "false");
   } else if (has_state_) {
     setOutput("sub_mode", last_value_);
+  } else {
+    setOutput("sub_mode", false);
   }
 
-  return has_state_ ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
+  return BT::NodeStatus::SUCCESS;
 }
 
 bool SubModeSubscriber::latchLastMessage() const

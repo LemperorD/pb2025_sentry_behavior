@@ -5,7 +5,9 @@
     <TreeNodesModel>
         <Condition ID="CalculateAttackPose">
             <input_port name="costmap_port" default="{nav_globalCostmap}" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;"/>
-            <input_port name="tracker_port" default="{tracker_target}" type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="enemy_pos_port" default="{@serial_enemyPos}" type="geometry_msgs::msg::Point_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="enemy_stamp_port" default="{@serial_enemyPosStamp}" type="double"/>
+            <input_port name="fresh_timeout_sec" default="0.5" type="double"/>
             <output_port name="goal" default="{attack_pose}" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
             <input_port name="topic_name" default="__default__placeholder__" type="std::string"/>
         </Condition>
@@ -18,9 +20,11 @@
             <input_port name="ready_time" default="{@combat_cooldown_ready_time}" type="double">Timestamp threshold from SetChassisMode (mode 2 adds 3s). Returns SUCCESS once the current steady-clock time &gt;= ready_time.</input_port>
         </Condition>
         <Condition ID="IsDetectEnemy">
-            <input_port name="armor_id" default="1;2;3;4;5;7" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;">Expected id of armors</input_port>
             <input_port name="max_distance" default="8.0" type="float">Distance to enemy target</input_port>
-            <input_port name="key_port" default="{@detector_armors}" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;">Vision detector port</input_port>
+            <input_port name="key_port" default="{@serial_enemyPos}" type="geometry_msgs::msg::Point_&lt;std::allocator&lt;void&gt; &gt;">Enemy position from /serial/EnemyPos</input_port>
+            <input_port name="stamp_port" default="{@serial_enemyPosStamp}" type="double">Steady-clock receive timestamp (seconds)</input_port>
+            <input_port name="fresh_timeout_sec" default="0.5" type="double">Freshness timeout in seconds</input_port>
+            <input_port name="stable_required_count" default="3" type="int">Required consecutive valid detections</input_port>
         </Condition>
         <Condition ID="IsGameStatus">
             <input_port name="max_remain_time" default="420" type="int"/>
@@ -82,6 +86,14 @@
             <input_port name="current_mode_in" default="{@current_mode}" type="int">Optional read-only mapping to the blackboard key holding the previously written chassis mode (map to {@current_mode}) to avoid redundant writes.</input_port>
             <output_port name="current_mode" default="1" type="int">Current chassis mode written when changed. Map this output to a blackboard key (e.g. {@current_mode}) to allow ScriptCondition and other nodes to read the current mode.</output_port>
             <output_port name="combat_cooldown_ready_time" default="0.0" type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
+        </Action>
+        <Action ID="SetSubMode" editable="true">
+            <input_port name="topic_name"/>
+            <input_port name="sub_mode"/>
+            <input_port name="hold_sec"/>
+            <input_port name="current_sub_mode_in"/>
+            <input_port name="current_sub_mode"/>
+            <input_port name="submode_cooldown_ready_time"/>
         </Action>
         <Condition ID="SubModeSubscriber">
             <input_port name="topic_name" default="/sub_mode" type="std::string"/>

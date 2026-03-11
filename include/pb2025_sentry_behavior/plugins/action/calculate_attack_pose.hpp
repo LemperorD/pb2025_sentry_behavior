@@ -53,6 +53,8 @@ private:
     double attack_radius;
     int num_sectors;
     int cost_threshold;
+    double fresh_timeout_sec;
+    bool enemy_pos_in_bigyaw_frame;
     std::string robot_base_frame;
     double transform_tolerance;
     double max_visualization_distance;
@@ -69,14 +71,12 @@ private:
 
   PoseStamped createAttackPose(const Point & attack_point, const PointStamped & enemy_position);
 
+  Point convertEnemyPointToCostmapFrame(const Point & enemy_point_input, const PoseStamped & robot_pose);
+
   void createVisualizationMarkers(
     visualization_msgs::msg::MarkerArray & msg, const Point & enemy_position,
     const std::vector<Point> & candidates, const std::vector<Point> & feasible_points,
     const Point & robot_position, const nav_msgs::msg::OccupancyGrid & costmap);
-
-  bool transformPoseInTargetFrame(
-    const PointStamped & input_pose, PointStamped & transformed_pose, tf2_ros::Buffer & tf_buffer,
-    const std::string target_frame, const double transform_timeout);
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

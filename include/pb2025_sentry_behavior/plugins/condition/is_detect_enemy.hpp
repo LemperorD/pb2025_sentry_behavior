@@ -15,9 +15,10 @@
 #ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__CONDITION__IS_DETECT_ENEMY_HPP_
 #define PB2025_SENTRY_BEHAVIOR__PLUGINS__CONDITION__IS_DETECT_ENEMY_HPP_
 
+#include <chrono>
 #include <string>
 
-#include "auto_aim_interfaces/msg/armors.hpp"
+#include "geometry_msgs/msg/point.hpp"
 #include "behaviortree_cpp/condition_node.h"
 #include "rclcpp/rclcpp.hpp"
 
@@ -45,6 +46,9 @@ private:
   BT::NodeStatus checkEnemy();
 
   rclcpp::Logger logger_ = rclcpp::get_logger("IsDetectEnemyCondition");
+
+  int consecutive_valid_count_ = 0;
+  double last_enemy_pos_stamp_sec_ = -1.0;
 };
 }  // namespace pb2025_sentry_behavior
 

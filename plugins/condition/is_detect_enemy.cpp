@@ -14,6 +14,9 @@
 
 #include "pb2025_sentry_behavior/plugins/condition/is_detect_enemy.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 namespace pb2025_sentry_behavior
 {
 
@@ -26,44 +29,70 @@ IsDetectEnemyCondition::IsDetectEnemyCondition(
 BT::PortsList IsDetectEnemyCondition::providedPorts()
 {
   return {
-    BT::InputPort<auto_aim_interfaces::msg::Armors>(
-      "key_port", "{@detector_armors}", "Vision detector port on blackboard"),
-    BT::InputPort<std::vector<int>>(
-      "armor_id", "1;2;3;4;5;7",
-      "Expected id of armors. Multiple numbers should be separated by the character `;` in Groot2"),
+    BT::InputPort<geometry_msgs::msg::Point>(
+      "key_port", "{@serial_enemyPos}", "Enemy position port on blackboard from /serial/EnemyPos"),
+    BT::InputPort<double>(
+      "stamp_port", "{@serial_enemyPosStamp}",
+      "Steady-clock receive timestamp (seconds) for /serial/EnemyPos"),
     BT::InputPort<float>("max_distance", 8.0, "Distance to enemy target"),
+    BT::InputPort<double>("fresh_timeout_sec", 0.5, "Freshness timeout in seconds"),
+    BT::InputPort<int>("stable_required_count", 3, "Required consecutive valid detections"),
   };
 }
 
 BT::NodeStatus IsDetectEnemyCondition::checkEnemy()
 {
-  std::vector<int> expected_armor_ids;
+  static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
+  double enemy_pos_stamp_sec;
   float max_distance;
-  auto msg = getInput<auto_aim_interfaces::msg::Armors>("key_port");
+  double fresh_timeout_sec;
+  int stable_required_count;
+
+  auto msg = getInput<geometry_msgs::msg::Point>("key_port");
   if (!msg) {
-    RCLCPP_ERROR(logger_, "Detector message is not available");
+    RCLCPP_INFO_THROTTLE(
+      logger_, steady_clock, 5000, "EnemyPos message is not available");
     return BT::NodeStatus::FAILURE;
   }
 
-  getInput("armor_id", expected_armor_ids);
+  if (!getInput("stamp_port", enemy_pos_stamp_sec)) {
+    RCLCPP_INFO_THROTTLE(
+      logger_, steady_clock, 5000, "EnemyPos timestamp is not available");
+    return BT::NodeStatus::FAILURE;
+  }
+
   getInput("max_distance", max_distance);
+  getInput("fresh_timeout_sec", fresh_timeout_sec);
+  getInput("stable_required_count", stable_required_count);
 
-  for (const auto & armor : msg->armors) {
-    float distance_to_enemy = std::hypot(armor.pose.position.x, armor.pose.position.y);
+  const bool finite_xy = std::isfinite(msg->x) && std::isfinite(msg->y);
+  const float distance_to_enemy = std::hypot(static_cast<float>(msg->x), static_cast<float>(msg->y));
+  const bool valid_distance = distance_to_enemy > 1e-3f && distance_to_enemy <= max_distance;
+  const auto now = std::chrono::steady_clock::now();
+  const double now_sec = std::chrono::duration<double>(now.time_since_epoch()).count();
+  const bool fresh_enough = (now_sec - enemy_pos_stamp_sec) <= std::max(0.0, fresh_timeout_sec);
+  const bool is_valid_detection = finite_xy && valid_distance && fresh_enough;
 
-    if (armor.number.empty()) {
-      continue;
-    }
-    int armor_id = std::stoi(armor.number);
-    const bool is_armor_id_match =
-      std::find(expected_armor_ids.begin(), expected_armor_ids.end(), armor_id) !=
-      expected_armor_ids.end();
+  constexpr double kStampEps = 1e-6;
+  const bool stamp_moved_backward = enemy_pos_stamp_sec + kStampEps < last_enemy_pos_stamp_sec_;
+  const bool is_new_message = enemy_pos_stamp_sec > last_enemy_pos_stamp_sec_ + kStampEps;
 
-    const bool is_within_distance = (distance_to_enemy <= max_distance);
+  if (stamp_moved_backward) {
+    consecutive_valid_count_ = 0;
+    last_enemy_pos_stamp_sec_ = enemy_pos_stamp_sec;
+  }
 
-    if (is_armor_id_match && is_within_distance) {
-      return BT::NodeStatus::SUCCESS;
-    }
+  if (!is_valid_detection) {
+    consecutive_valid_count_ = 0;
+  } else if (is_new_message) {
+    consecutive_valid_count_ += 1;
+    last_enemy_pos_stamp_sec_ = enemy_pos_stamp_sec;
+  }
+
+  const bool stable_enough = consecutive_valid_count_ >= std::max(1, stable_required_count);
+
+  if (fresh_enough && stable_enough && is_valid_detection) {
+    return BT::NodeStatus::SUCCESS;
   }
 
   return BT::NodeStatus::FAILURE;

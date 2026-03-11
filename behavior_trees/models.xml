@@ -2,7 +2,9 @@
     <TreeNodesModel>
         <Condition ID="CalculateAttackPose">
             <input_port name="costmap_port" type="nav_msgs::msg::OccupancyGrid_&lt;std::allocator&lt;void&gt; &gt;" default="{@nav_globalCostmap}">GlobalCostmap port on blackboard</input_port>
-            <input_port name="tracker_port" type="auto_aim_interfaces::msg::Target_&lt;std::allocator&lt;void&gt; &gt;" default="{@tracker_target}">Vision target port on blackboard</input_port>
+            <input_port name="enemy_pos_port" type="geometry_msgs::msg::Point_&lt;std::allocator&lt;void&gt; &gt;" default="{@serial_enemyPos}">Enemy position port on blackboard</input_port>
+            <input_port name="enemy_stamp_port" type="double" default="{@serial_enemyPosStamp}">Steady-clock receive timestamp (seconds) for enemy_pos_port</input_port>
+            <input_port name="fresh_timeout_sec" type="double" default="0.5">Freshness timeout in seconds for enemy_pos_port</input_port>
             <output_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;" default="{attack_pose}">Expected goal pose that send to nav2. Fill with format `x;y;yaw`</output_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Condition>
@@ -15,9 +17,11 @@
             <input_port name="ready_time" type="double" default="0.000000">Monotonic timestamp (seconds) when combat cooldown expires; SUCCESS once now &gt;= ready_time</input_port>
         </Condition>
         <Condition ID="IsDetectEnemy">
-            <input_port name="armor_id" type="std::vector&lt;int, std::allocator&lt;int&gt; &gt;" default="1;2;3;4;5;7">Expected id of armors. Multiple numbers should be separated by the character `;` in Groot2</input_port>
+            <input_port name="stable_required_count" type="int" default="3">Required consecutive valid detections</input_port>
+            <input_port name="fresh_timeout_sec" type="double" default="0.500000">Freshness timeout in seconds</input_port>
+            <input_port name="stamp_port" type="double" default="{@serial_enemyPosStamp}">Steady-clock receive timestamp (seconds) for /serial/EnemyPos</input_port>
             <input_port name="max_distance" type="float" default="8.000000">Distance to enemy target</input_port>
-            <input_port name="key_port" type="auto_aim_interfaces::msg::Armors_&lt;std::allocator&lt;void&gt; &gt;" default="{@detector_armors}">Vision detector port on blackboard</input_port>
+            <input_port name="key_port" type="geometry_msgs::msg::Point_&lt;std::allocator&lt;void&gt; &gt;" default="{@serial_enemyPos}">Enemy position port on blackboard from /serial/EnemyPos</input_port>
         </Condition>
         <Condition ID="IsGameStatus">
             <input_port name="max_remain_time" type="int" default="420">Maximum remaining time (s)</input_port>
@@ -89,6 +93,16 @@
             <output_port name="combat_cooldown_ready_time" type="double">Monotonic timestamp (seconds) indicating when switching from mode 2 to mode 1 is allowed</output_port>
             <output_port name="current_mode" type="int">Current chassis mode written when changed</output_port>
             <input_port name="duration" type="std::chrono::milliseconds" default="">Publish then sleep duration in milliseconds</input_port>
+            <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
+        </Action>
+        <Action ID="SetSubMode">
+            <input_port name="sub_mode" type="bool" default="false">Sub mode flag: false=go home, true=enemy handling</input_port>
+            <input_port name="hold_sec" type="double" default="0.000000">When sub_mode=true, minimum hold time in seconds before allowing sub_mode=false</input_port>
+            <input_port name="current_sub_mode_in" type="bool" default="false">Current sub mode read from blackboard to avoid redundant updates</input_port>
+            <output_port name="submode_hold_until" type="double">Monotonic timestamp (seconds) before which sub_mode should remain true</output_port>
+            <output_port name="submode_cooldown_ready_time" type="double">Monotonic timestamp (seconds) indicating when switching sub_mode from true to false is allowed</output_port>
+            <input_port name="duration" type="std::chrono::milliseconds" default="">Publish then sleep duration in milliseconds</input_port>
+            <output_port name="current_sub_mode" type="bool">Current sub mode written to blackboard</output_port>
             <input_port name="topic_name" type="std::string" default="__default__placeholder__">Topic name</input_port>
         </Action>
         <Condition ID="SubModeSubscriber">

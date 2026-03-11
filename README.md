@@ -122,12 +122,14 @@ Parameters:
 
 #### IsDetectEnemy
 
-通过视觉模块判断是否感知到敌方。
+通过 `/serial/EnemyPos`（`geometry_msgs::msg::Point`）判断是否感知到敌方。
 
-- `armor_id`：预期的装甲 ID 列表。可以是多个数字，用 `;` 分隔
-- `max_distance`：敌方目标的最大距离
+- `key_port`：从 GlobalBlackboard 获取 `EnemyPos` 消息（默认 `{@serial_enemyPos}`）
+- `max_distance`：敌方目标最大距离（米，默认 8.0）
+- `fresh_timeout_sec`：新鲜度超时阈值（秒，默认 0.5）
+- `stable_required_count`：稳定判定所需连续有效帧数（默认 3）
 
-如果视觉模块感知到的敌方在 `armor_id` 列表中，且距离小于 `max_distance`，则返回 SUCCESS，否则返回 FAILURE。
+当且仅当同时满足“距离有效（且在 `max_distance` 内）+ 数据新鲜 + 连续稳定”时返回 `SUCCESS`，否则返回 `FAILURE`。
 
 #### IsGameStatus
 

@@ -13,6 +13,9 @@ pb2025_sentry_behavior_server:
     behavior_trees:
       - pb2025_sentry_behavior/behavior_trees
 
+    mode1_goal: "4.65;-3.5;0"                # 格式: x;y;yaw 或 x;y;z;qx;qy;qz;qw
+    mode3_goal: "0;0;0"                      # 生存模式补给点目标
+
     CalculateAttackPose:
       attack_radius: 2.0                        # 攻击半径（米）
       num_sectors: 36                           # 扇区划分数量
