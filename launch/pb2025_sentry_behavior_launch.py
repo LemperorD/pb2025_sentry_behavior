@@ -18,7 +18,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
-from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace, SetRemap
 from launch_ros.descriptions import ParameterFile
@@ -32,7 +31,6 @@ def generate_launch_description():
     # Create the launch configuration variables
     namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration("use_sim_time")
-    use_namespace = LaunchConfiguration("use_namespace")
     params_file = LaunchConfiguration("params_file")
     log_level = LaunchConfiguration("log_level")
 
@@ -43,15 +41,6 @@ def generate_launch_description():
         RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
-            param_rewrites=param_substitutions,
-            convert_types=True,
-        ),
-        allow_substs=True,
-    )
-
-    configured_params_no_namespace = ParameterFile(
-        RewrittenYaml(
-            source_file=params_file,
             param_rewrites=param_substitutions,
             convert_types=True,
         ),
@@ -71,12 +60,6 @@ def generate_launch_description():
         description="Top-level namespace",
     )
 
-    declare_use_namespace_cmd = DeclareLaunchArgument(
-        "use_namespace",
-        default_value="true",
-        description="Whether to apply top-level namespace to behavior nodes",
-    )
-
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
         default_value="false",
@@ -93,7 +76,7 @@ def generate_launch_description():
         "log_level", default_value="info", description="log level"
     )
 
-    bringup_with_namespace_cmd_group = GroupAction(
+    bringup_cmd_group = GroupAction(
         [
             PushRosNamespace(namespace=namespace),
             SetRemap("/tf", "tf"),
@@ -115,31 +98,6 @@ def generate_launch_description():
                 arguments=["--ros-args", "--log-level", log_level],
             ),
         ],
-        condition=IfCondition(use_namespace),
-    )
-
-    bringup_without_namespace_cmd_group = GroupAction(
-        [
-            SetRemap("/tf", "tf"),
-            SetRemap("/tf_static", "tf_static"),
-            Node(
-                package="pb2025_sentry_behavior",
-                executable="pb2025_sentry_behavior_server",
-                name="pb2025_sentry_behavior_server",
-                output="screen",
-                parameters=[configured_params_no_namespace],
-                arguments=["--ros-args", "--log-level", log_level],
-            ),
-            Node(
-                package="pb2025_sentry_behavior",
-                executable="pb2025_sentry_behavior_client",
-                name="pb2025_sentry_behavior_client",
-                output="screen",
-                parameters=[configured_params_no_namespace],
-                arguments=["--ros-args", "--log-level", log_level],
-            ),
-        ],
-        condition=UnlessCondition(use_namespace),
     )
 
     # Create the launch description and populate
@@ -151,13 +109,11 @@ def generate_launch_description():
 
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)
-    ld.add_action(declare_use_namespace_cmd)
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_log_level_cmd)
 
     # Add the actions to launch the nodes
-    ld.add_action(bringup_with_namespace_cmd_group)
-    ld.add_action(bringup_without_namespace_cmd_group)
+    ld.add_action(bringup_cmd_group)
 
     return ld
