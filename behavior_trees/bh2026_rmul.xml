@@ -102,53 +102,41 @@
           <Sequence name="survival_spin_when_enemy">
             <SubTree ID="DetectEnemyStable"
                      _autoremap="true"/>
-            <Fallback>
-              <ScriptCondition code="chassis_mode_cmd == 2"/>
-              <SetChassisMode mode="2"
-                              topic_name="chassis_mode"
-                              current_mode_in="{chassis_mode_cmd}"
-                              current_mode="{chassis_mode_cmd}"
-                              combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-            </Fallback>
-          </Sequence>
-          <Fallback>
-            <ScriptCondition code="chassis_mode_cmd == 1"/>
-            <SetChassisMode mode="1"
+            <SetChassisMode mode="2"
                             topic_name="chassis_mode"
                             current_mode_in="{chassis_mode_cmd}"
                             current_mode="{chassis_mode_cmd}"
                             combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-          </Fallback>
+          </Sequence>
+          <SetChassisMode mode="1"
+                          topic_name="chassis_mode"
+                          current_mode_in="{chassis_mode_cmd}"
+                          current_mode="{chassis_mode_cmd}"
+                          combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Fallback>
       </Sequence>
       <Sequence name="combat_mode">
         <SubTree ID="DetectEnemyStable"
                  _autoremap="true"/>
         <Script code="current_mode:=2"/>
-        <Fallback>
-          <ScriptCondition code="chassis_mode_cmd == 2"/>
-          <SetChassisMode mode="2"
-                          topic_name="chassis_mode"
-                          current_mode_in="{chassis_mode_cmd}"
-                          current_mode="{chassis_mode_cmd}"
-                          combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-        </Fallback>
+        <SetChassisMode mode="2"
+                        topic_name="chassis_mode"
+                        current_mode_in="{chassis_mode_cmd}"
+                        current_mode="{chassis_mode_cmd}"
+                        combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
       </Sequence>
-      <Fallback>
-        <ScriptCondition code="current_mode == 1"/>
-        <Sequence name="default_mode_entry">
-          <Script code="current_mode:=1"/>
-          <Fallback name="combat_cooldown_gate">
-            <ScriptCondition code="chassis_mode_cmd != 2"/>
-            <IsCombatCooldownReady ready_time="{@combat_cooldown_ready_time}"/>
-          </Fallback>
-          <SetChassisMode mode="1"
-                          topic_name="chassis_mode"
-                          current_mode_in="{chassis_mode_cmd}"
-                          current_mode="{chassis_mode_cmd}"
-                          combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-        </Sequence>
-      </Fallback>
+      <Sequence name="default_mode_entry">
+        <Script code="current_mode:=1"/>
+        <Fallback name="combat_cooldown_gate">
+          <ScriptCondition code="chassis_mode_cmd != 2"/>
+          <IsCombatCooldownReady ready_time="{@combat_cooldown_ready_time}"/>
+        </Fallback>
+        <SetChassisMode mode="1"
+                        topic_name="chassis_mode"
+                        current_mode_in="{chassis_mode_cmd}"
+                        current_mode="{chassis_mode_cmd}"
+                        combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+      </Sequence>
     </Fallback>
   </BehaviorTree>
 
