@@ -97,7 +97,7 @@ def generate_launch_description():
                 parameters=[configured_params],
                 arguments=["--ros-args", "--log-level", log_level],
             ),
-        ]
+        ],
     )
 
     # Create the launch description and populate

@@ -22,20 +22,8 @@
     <Fallback name="mode_execution">
       <Sequence name="execute_survive_mode">
         <ScriptCondition code="current_mode == 3"/>
-        <Fallback name="execute_survive_mode">
-          <Sequence name="execute_survival_mode">
-            <ScriptCondition code="sub_mode == false"/>
-            <SubTree ID="rmul_supply"
-                     _autoremap="true"/>
-          </Sequence>
-          <Sequence name="execute_survival_mode">
-            <ScriptCondition code="sub_mode == true"/>
-            <RateController hz="5.0">
-              <PubNav2Goal goal="{@mode3_goal}"
-                           topic_name="goal_pose"/>
-            </RateController>
-          </Sequence>
-        </Fallback>
+        <SubTree ID="rmul_supply"
+                 _autoremap="true"/>
       </Sequence>
       <Sequence name="execute_combat_mode">
         <ScriptCondition code="current_mode == 2"/>
@@ -63,12 +51,11 @@
   <BehaviorTree ID="Initialize">
     <Sequence>
       <Script code="current_mode:=1"/>
-      <Script code="sub_mode:=false"/>
-      <Script code="submode_cooldown_ready_time:=0.0"/>
-        <SetChassisMode mode="1"
-                        topic_name="chassis_mode"
-                      current_mode_in="{current_mode}"
-                      current_mode="{current_mode}"
+      <Script code="chassis_mode_cmd:=1"/>
+      <SetChassisMode mode="1"
+                      topic_name="chassis_mode"
+                      current_mode_in="{chassis_mode_cmd}"
+                      current_mode="{chassis_mode_cmd}"
                       combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
     </Sequence>
   </BehaviorTree>
@@ -103,89 +90,54 @@
           <Sequence name="maintain_survival">
             <ScriptCondition code="current_mode == 3"/>
             <Inverter>
-              <IsStatusOK ammo_min="0"
+              <IsStatusOK ammo_min="100"
                           heat_max="350"
                           hp_min="300"
                           key_port="{@referee_robotStatus}"/>
             </Inverter>
           </Sequence>
         </Fallback>
-        <Fallback name="check_if_already_survival">
-          <ScriptCondition code="current_mode == 3"/>
-          <SetChassisMode mode="3"
+        <Script code="current_mode:=3"/>
+        <Fallback name="survival_mode_action">
+          <Sequence name="survival_spin_when_enemy">
+            <SubTree ID="DetectEnemyStable"
+                     _autoremap="true"/>
+            <SetChassisMode mode="2"
+                            topic_name="chassis_mode"
+                            current_mode_in="{chassis_mode_cmd}"
+                            current_mode="{chassis_mode_cmd}"
+                            combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+          </Sequence>
+          <SetChassisMode mode="1"
                           topic_name="chassis_mode"
-                          current_mode_in="{current_mode}"
-                          current_mode="{current_mode}"
+                          current_mode_in="{chassis_mode_cmd}"
+                          current_mode="{chassis_mode_cmd}"
                           combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
         </Fallback>
-        <SubTree ID="SubmodeCheck"
-                 _autoremap="true"/>
       </Sequence>
       <Sequence name="combat_mode">
         <SubTree ID="DetectEnemyStable"
                  _autoremap="true"/>
-        <Fallback>
-          <ScriptCondition code="current_mode == 2"/>
-          <SetChassisMode mode="2"
-                          topic_name="chassis_mode"
-                          current_mode_in="{current_mode}"
-                          current_mode="{current_mode}"
-                          combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-        </Fallback>
+        <Script code="current_mode:=2"/>
+        <SetChassisMode mode="2"
+                        topic_name="chassis_mode"
+                        current_mode_in="{chassis_mode_cmd}"
+                        current_mode="{chassis_mode_cmd}"
+                        combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
       </Sequence>
-      <Fallback>
-        <ScriptCondition code="current_mode == 1"/>
-        <Sequence name="default_mode_entry">
-          <Fallback name="combat_cooldown_gate">
-            <ScriptCondition code="current_mode != 2"/>
-            <IsCombatCooldownReady ready_time="{@combat_cooldown_ready_time}"/>
-          </Fallback>
-          <SetChassisMode mode="1"
-                          topic_name="chassis_mode"
-                          current_mode_in="{current_mode}"
-                          current_mode="{current_mode}"
-                          combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
-        </Sequence>
-      </Fallback>
+      <Sequence name="default_mode_entry">
+        <Script code="current_mode:=1"/>
+        <Fallback name="combat_cooldown_gate">
+          <ScriptCondition code="chassis_mode_cmd != 2"/>
+          <IsCombatCooldownReady ready_time="{@combat_cooldown_ready_time}"/>
+        </Fallback>
+        <SetChassisMode mode="1"
+                        topic_name="chassis_mode"
+                        current_mode_in="{chassis_mode_cmd}"
+                        current_mode="{chassis_mode_cmd}"
+                        combat_cooldown_ready_time="{@combat_cooldown_ready_time}"/>
+      </Sequence>
     </Fallback>
-  </BehaviorTree>
-
-  <BehaviorTree ID="SubmodeCheck">
-    <ForceSuccess>
-      <Sequence>
-        <ScriptCondition code="current_mode == 3"/>
-        <Fallback name="sub_mode_decision">
-          <Sequence name="sub_mode_true_path">
-            <SubTree ID="DetectEnemyStable"
-                     _autoremap="true"/>
-            <Fallback>
-              <ScriptCondition code="sub_mode == true"/>
-              <SetSubMode topic_name="/sub_mode"
-                          sub_mode="true"
-                          hold_sec="3.0"
-                          current_sub_mode_in="{sub_mode}"
-                          current_sub_mode="{sub_mode}"
-                          submode_cooldown_ready_time="{submode_cooldown_ready_time}"/>
-            </Fallback>
-          </Sequence>
-          <Fallback>
-            <ScriptCondition code="sub_mode == false"/>
-            <Sequence name="sub_mode_false_entry">
-              <Fallback name="sub_mode_cooldown_gate">
-                <ScriptCondition code="sub_mode != true"/>
-                <IsCombatCooldownReady ready_time="{submode_cooldown_ready_time}"/>
-              </Fallback>
-              <SetSubMode topic_name="/sub_mode"
-                          sub_mode="false"
-                          hold_sec="0.0"
-                          current_sub_mode_in="{sub_mode}"
-                          current_sub_mode="{sub_mode}"
-                          submode_cooldown_ready_time="{submode_cooldown_ready_time}"/>
-            </Sequence>
-          </Fallback>
-        </Fallback>
-      </Sequence>
-    </ForceSuccess>
   </BehaviorTree>
 
   <BehaviorTree ID="check_game_start">
@@ -323,7 +275,7 @@
                   default="1"
                   type="int">Chassis Mode: 1=Follow, 2=Spin, 3=Survival</input_port>
       <input_port name="topic_name"
-                   default="chassis_mode"
+                  default="/chassis_mode"
                   type="std::string">ROS2 topic to publish the chassis mode (message type: std_msgs/msg/Int32)</input_port>
       <input_port name="current_mode_in"
                   default="{@current_mode}"
@@ -334,15 +286,6 @@
       <output_port name="combat_cooldown_ready_time"
                    default="0.0"
                    type="double">Timestamp (steady clock seconds) stored whenever mode changes. When mode=2, the node pushes now+3s to enforce a cooldown before returning to mode 1.</output_port>
-    </Action>
-    <Action ID="SetSubMode"
-            editable="true">
-      <input_port name="topic_name"/>
-      <input_port name="sub_mode"/>
-      <input_port name="hold_sec"/>
-      <input_port name="current_sub_mode_in"/>
-      <input_port name="current_sub_mode"/>
-      <input_port name="submode_cooldown_ready_time"/>
     </Action>
   </TreeNodesModel>
 
