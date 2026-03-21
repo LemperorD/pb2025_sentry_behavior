@@ -15,6 +15,7 @@
 #ifndef PB2025_SENTRY_BEHAVIOR__PLUGINS__CONDITION__IS_GAME_STATUS_HPP_
 #define PB2025_SENTRY_BEHAVIOR__PLUGINS__CONDITION__IS_GAME_STATUS_HPP_
 
+#include <chrono>
 #include <string>
 
 #include "behaviortree_cpp/condition_node.h"
@@ -45,6 +46,8 @@ private:
   BT::NodeStatus checkGameStart();
 
   rclcpp::Logger logger_ = rclcpp::get_logger("IsGameStatusCondition");
+  bool match_start_time_initialized_ = false;
+  std::chrono::time_point<std::chrono::steady_clock> match_start_time_;
 };
 }  // namespace pb2025_sentry_behavior
 

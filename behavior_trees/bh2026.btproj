@@ -30,6 +30,7 @@
             <input_port name="max_remain_time" default="420" type="int"/>
             <input_port name="min_remain_time" default="0" type="int"/>
             <input_port name="expected_game_progress" default="4" type="int"/>
+            <input_port name="confirm_duration_sec" default="0.0" type="double"/>
             <input_port name="key_port" default="{referee_gameStatus}" type="pb_rm_interfaces::msg::GameStatus_&lt;std::allocator&lt;void&gt; &gt;"/>
         </Condition>
         <Condition ID="IsRfidDetected">
